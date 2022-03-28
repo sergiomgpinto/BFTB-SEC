@@ -1,22 +1,26 @@
 package pt.tecnico.bftb.client;
 
 import java.security.KeyPairGenerator;
+import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.KeyPair;
 import java.security.SecureRandom;
-
+import java.security.cert.X509Certificate;
+import java.security.interfaces.DSAPrivateKey;
+import java.security.interfaces.DSAPublicKey;
 import java.util.List;
 import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
+import io.grpc.Attributes.Key;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 
 public class BFTBClientApp {
 
-    static PublicKey publicKey;
-    static PrivateKey privateKey;
+    static DSAPublicKey publicKey;
+    static DSAPrivateKey privateKey;
     static ByteString encodedPublicKey;
 
     public static void main(String[] args) {
@@ -32,8 +36,18 @@ public class BFTBClientApp {
         final int port = Integer.parseInt(args[1]);
         String publicKeyString = null;
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
+        String name = System.console().readLine(Label.CLIENT_NAME);
 
         try {
+            KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+            ks = KeyStore.getInstance("JCEKS");
+            char[] pwdArray = "changeme".toCharArray(); //
+            ks.load(null, pwdArray);
+
+            X509Certificate[] certificateChain = new X509Certificate[2];
+
+            // System.out.println(ks.);
+
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA"); // Should we use DSA?
             SecureRandom random = SecureRandom.getInstance("SHA1PRNG"); // Change to SHA2/3
             keyGen.initialize(1024, random); // Should we use a bigger Keysize?
@@ -43,6 +57,11 @@ public class BFTBClientApp {
             publicKey = pair.getPublic();
 
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
+            ks.setKeyEntry(name, privateKey, pwdArray, certificateChain);
+
+            // Create an instance of KeyStore of type “JCEKS”.
+            // JCEKS refers the KeyStore implementation from SunJCE provider
+            // Load the null Keystore and set the password to “changeme”
 
         } catch (Exception e) {
             System.out.println(e);
@@ -74,8 +93,9 @@ public class BFTBClientApp {
                             System.out.println(Label.INVALID_ARGS_SND_AMT);
                             continue;
                         }
-                        System.out.println(frontend.sendAmount(publicKeyString, splittedCommand[1]
-                                , Integer.parseInt(splittedCommand[2])).getResponse());
+                        System.out.println(frontend
+                                .sendAmount(publicKeyString, splittedCommand[1], Integer.parseInt(splittedCommand[2]))
+                                .getResponse());
                         break;
 
                     case "check_account":
@@ -97,12 +117,12 @@ public class BFTBClientApp {
                             continue;
                         }
                         String answer = splittedCommand[3];
-                        if (answer.equals("yes") || answer.equals("Yes") || answer.equals("no") || answer.equals("No")){
+                        if (answer.equals("yes") || answer.equals("Yes") || answer.equals("no")
+                                || answer.equals("No")) {
                             boolean accept = splittedCommand[3].equals("yes") || splittedCommand[3].equals("Yes");
-                            System.out.println(frontend.receiveAmount(publicKeyString,splittedCommand[1]
-                                    ,Integer.parseInt(splittedCommand[2]),accept).getResult());
-                        }
-                        else{
+                            System.out.println(frontend.receiveAmount(publicKeyString, splittedCommand[1],
+                                    Integer.parseInt(splittedCommand[2]), accept).getResult());
+                        } else {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT_ANSWER);
                         }
                         break;
@@ -147,8 +167,7 @@ public class BFTBClientApp {
 
             } catch (StatusRuntimeException e) {// This is where the exceptions from grpc are caught.
                 System.out.println(e.getMessage());
-            }
-            catch (NumberFormatException nfe) {
+            } catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
             }
 
