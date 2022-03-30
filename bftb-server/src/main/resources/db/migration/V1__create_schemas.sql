@@ -1,0 +1,32 @@
+DROP DATABASE IF EXISTS bftbServer;
+
+CREATE DATABASE IF NOT EXISTS bftbServer;
+
+USE bftbServer;
+
+CREATE TABLE Account (
+	AccountId INTEGER NOT NULL AUTO_INCREMENT,
+	Balance INTEGER NOT NULL,
+	PublicKeyString VARCHAR(12) NOT NULL,
+	CONSTRAINT PK_Account PRIMARY KEY (AccountId)
+);
+
+CREATE TABLE Pending (
+	PendingId INTEGER NOT NULL AUTO_INCREMENT,
+	Amount INTEGER NOT NULL,
+	TransactionStatus VARCHAR(8) NOT NULL,
+	TransactionType VARCHAR(10) NOT NULL,
+	SourceUserKey VARCHAR(12) NOT NULL,
+	DestinationUserKey VARCHAR(12) NOT NULL,
+	TransactionId INTEGER NOT NULL,
+	CONSTRAINT PK_Pending PRIMARY KEY (PendingId)
+);
+
+CREATE TABLE Transaction (
+	TransactionId INTEGER NOT NULL AUTO_INCREMENT,
+	Amount INTEGER NOT NULL,
+	TransactionType VARCHAR(10) NOT NULL,
+	SourceUserKey VARCHAR(12) NOT NULL,
+	DestinationUserKey VARCHAR(12) NOT NULL,
+	CONSTRAINT PK_Transaction PRIMARY KEY (TransactionId)
+);
