@@ -4,10 +4,18 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.List;
 import com.google.protobuf.ByteString;
 
@@ -37,12 +45,89 @@ public class BFTBClientApp {
         char[] charName = name.toCharArray();
         int lastNameIndex = name.length() - 1;
         try {
+            
+            String originPath = System.getProperty("user.dir");
+            Path path = Paths.get(originPath);
 
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(
-                    "/Users/rodrigopinto/Desktop/IST/Masters/3º Quarter/SEC/Project/BFTB/BFTB-SEC/certificates/users/User"
-                            + charName[lastNameIndex] + "KeyStore.jks"),
-                    ("keystore" + charName[lastNameIndex]).toCharArray());
+            ks.load(new FileInputStream(path.getParent() + "/certificates/users/User" + charName[lastNameIndex] + "KeyStore.jks"), ("keystore" + charName[lastNameIndex]).toCharArray());
+
+            privateKey = (PrivateKey) ks.getKey(name, ("keystore" + charName[lastNameIndex]).toCharArray()); //load  keys to lybrary and load on server
+
+
+            // /////////---------------------------before---------------
+            // File filePublicKey = new File(path.getParent() + "/certificates/users/user1public.key");
+            // FileInputStream fis = new FileInputStream(path.getParent() + "/certificates/users/user1public.key");
+            // //byte[] _encodedPublicKey = new byte[(int) filePublicKey.length()];
+            // byte[] _encodedPublicKey = DatatypeConverter.parseHexBinary(filePublicKey);
+            // fis.read(_encodedPublicKey);
+            // fis.close();
+            // KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+            // X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
+            //         _encodedPublicKey);
+            // System.out.println(_encodedPublicKey);
+            // PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
+
+            // ////// ----------------create---------------------
+            // KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA");
+            // keyGen.initialize(1024);
+			// KeyPair generatedKeyPair = keyGen.genKeyPair();
+
+            // PrivateKey genprivateKey = generatedKeyPair.getPrivate();
+            // PublicKey genpublicKey = generatedKeyPair.getPublic();
+     
+            // ////// ----------------save---------------------
+            // // Store Public Key.
+            // X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(
+            //     genpublicKey.getEncoded());
+            // FileOutputStream fos = new FileOutputStream(path.getParent() + "/certificates/server/Spublic.key");
+            // fos.write(x509EncodedKeySpec.getEncoded());
+            // fos.close();
+     
+            // // Store Private Key.
+            // PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(
+            //     genprivateKey.getEncoded());
+            // fos = new FileOutputStream(path.getParent() + "/certificates/server/Sprivate.key");
+            // fos.write(pkcs8EncodedKeySpec.getEncoded());
+            // fos.close();
+            /// ------------------load-----------
+
+            // KeyFactory keyFactory = KeyFactory.getInstance("DSA");
+
+            // File filePublicKey = new File(path.getParent() + "/certificates/javacert/serverpub.key");
+            // FileInputStream fis = new FileInputStream(path.getParent() + "/certificates/javacert/serverpub.key");
+            // byte[] encodedPublicKey = new byte[(int) filePublicKey.length()];
+            // fis.read(encodedPublicKey);
+            // fis.close();
+
+            // X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
+            //     encodedPublicKey);
+            // publicKey = keyFactory.generatePublic(publicKeySpec);
+
+            
+            byte[] keyBytes = Files.readAllBytes(Paths.get(path.getParent() + "/certificates/javacert/serverpub.key"));
+
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            publicKey = kf.generatePublic(spec);
+
+            
+            System.out.println("publicKey");
+            System.out.println(publicKey);
+            
+            // // Read Private Key.
+            // File filePrivateKey = new File(path.getParent() + "/certificates/javacert/server.key");
+            // fis = new FileInputStream(path.getParent() + "/certificates/javacert/server.key");
+            // byte[] encodedPrivateKey = new byte[(int) filePrivateKey.length()];
+            // fis.read(encodedPrivateKey);
+            // fis.close();
+    
+            // PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(
+            //         encodedPrivateKey);
+            // privateKey = keyFactory.generatePrivate(privateKeySpec);
+            
+            ////// ----------------end-------------------
+
 
         } catch (Exception e) {
             System.out.println(e);
@@ -50,7 +135,7 @@ public class BFTBClientApp {
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
 
-        BFTBFrontend frontend = new BFTBFrontend(host, port);// Frontend server implementation.
+        BFTBFrontend frontend = new BFTBFrontend(host, port, privateKey);// Frontend server implementation.
 
         /*---------------------------------- Registration into the server ----------------------------------*/
         OpenAccountResponse response = frontend.openAccount(encodedPublicKey);

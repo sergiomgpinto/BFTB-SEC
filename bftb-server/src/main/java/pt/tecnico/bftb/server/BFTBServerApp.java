@@ -2,6 +2,8 @@ package pt.tecnico.bftb.server;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
@@ -52,10 +54,13 @@ public class BFTBServerApp {
 
         try {
 
+            String originPath = System.getProperty("user.dir");
+            Path path = Paths.get(originPath);
+
+            System.out.println(path.getParent() + "/certificates/server/ServerKeyStore.jks");
+            
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(
-                    "/Users/rodrigopinto/Desktop/IST/Masters/3º Quarter/SEC/Project/BFTB/BFTB-SEC/certificates/server/ServerKeyStore.jks"),
-                    "serverkeystore".toCharArray());
+            ks.load(new FileInputStream(path.getParent() + "/certificates/server/ServerKeyStore.jks"), "serverkeystore".toCharArray());
 
             System.out.println(ks.getKey("server", "serverkeystore".toCharArray()));
         } catch (Exception e) {

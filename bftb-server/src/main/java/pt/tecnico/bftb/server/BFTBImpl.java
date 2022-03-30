@@ -1,10 +1,17 @@
 package pt.tecnico.bftb.server;
 
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 
+import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 
+import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.bftb.server.domain.Label;
 import pt.tecnico.bftb.server.domain.NoAccountException;
@@ -22,6 +29,7 @@ import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
 import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
@@ -29,15 +37,43 @@ import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+
 import static io.grpc.Status.*;
 
 public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     private BFTBServerLogic _bftb = new BFTBServerLogic();
 
+    PrivateKey privateKey = null;
+    PublicKey publicKey = null;
+
     @Override
-    public void openAccount(OpenAccountRequest request, StreamObserver<OpenAccountResponse> responseObserver) {
-        ByteString key = request.getKey();
+    public void openAccount(EncryptedMessage request, StreamObserver<EncryptedMessage> responseObserver) {
+
+        Cipher decryptCipher;
+        byte[] decryptedMessageBytes = null;
+        try {
+            decryptCipher = Cipher.getInstance("RSA");
+            decryptCipher.init(Cipher.DECRYPT_MODE, publicKey);
+            decryptedMessageBytes = decryptCipher.doFinal(request.getEncryptedmessage().getBytes());
+        } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException | NoSuchPaddingException e1) {
+            e1.printStackTrace();
+        }
+
+        String decryptedMessage = new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+
+        OpenAccountRequest requestOpen = null;
+        try {
+            requestOpen = OpenAccountRequest.parseFrom(BaseEncoding.base64().decode(decryptedMessage));
+        } catch (InvalidProtocolBufferException e1) {
+            e1.printStackTrace();
+        }
+
+        ByteString key = requestOpen.getKey();
         OpenAccountResponse response;
 
         if (key == null) {
@@ -53,7 +89,29 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             else{
                 response = OpenAccountResponse.newBuilder().setResponse(ret).build();
             }
-            responseObserver.onNext(response);
+
+            String openAccountResponseString = BaseEncoding.base64().encode(response.toByteArray());
+            byte[] encryptedMessageBytes = null;
+            try{
+                Cipher encryptCipher = Cipher.getInstance("RSA");
+                encryptCipher.init(Cipher.ENCRYPT_MODE, privateKey); //server Private Key
+                byte[] secretMessageBytes = openAccountResponseString.getBytes(StandardCharsets.UTF_8);
+                encryptedMessageBytes = encryptCipher.doFinal(secretMessageBytes);
+            } catch (IllegalBlockSizeException e) {  //// ??
+                e.printStackTrace();
+            } catch (BadPaddingException e) {
+                e.printStackTrace();
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (NoSuchPaddingException e) {
+                e.printStackTrace();
+            } catch (InvalidKeyException e) {
+                e.printStackTrace();
+            }
+            String encodedMessage = new String(encryptedMessageBytes, StandardCharsets.UTF_8);
+            EncryptedMessage responseencripted = EncryptedMessage.newBuilder().setEncryptedmessage(encodedMessage).build();
+
+            responseObserver.onNext(responseencripted);
             responseObserver.onCompleted();
 
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {

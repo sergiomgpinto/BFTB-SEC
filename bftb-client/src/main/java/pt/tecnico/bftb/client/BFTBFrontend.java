@@ -1,11 +1,14 @@
 package pt.tecnico.bftb.client;
 
+import java.security.PrivateKey;
+
 import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
@@ -20,10 +23,10 @@ public class BFTBFrontend {
     private String _host;
     private BFTBLibraryApp _library;
 
-    public BFTBFrontend(String host, int port) {
+    public BFTBFrontend(String host, int port, PrivateKey privateKey) {
         _host = host;
         _port = port;
-        _library = new BFTBLibraryApp();
+        _library = new BFTBLibraryApp(privateKey);
     }
 
     public BFTBGrpc.BFTBBlockingStub StubCreator() {
@@ -34,7 +37,7 @@ public class BFTBFrontend {
 
     public OpenAccountResponse openAccount(ByteString encodedPublicKey) {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-        return stub.openAccount(_library.openAccount(encodedPublicKey));
+        return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey)));
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey,
