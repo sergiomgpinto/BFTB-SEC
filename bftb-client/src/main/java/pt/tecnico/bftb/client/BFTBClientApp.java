@@ -45,89 +45,24 @@ public class BFTBClientApp {
         char[] charName = name.toCharArray();
         int lastNameIndex = name.length() - 1;
         try {
-            
+
             String originPath = System.getProperty("user.dir");
             Path path = Paths.get(originPath);
 
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(path.getParent() + "/certificates/users/User" + charName[lastNameIndex] + "KeyStore.jks"), ("keystore" + charName[lastNameIndex]).toCharArray());
+            ks.load(new FileInputStream(
+                    path.getParent() + "/certificates/javacert/users/user" + charName[lastNameIndex] + "keystore.jks"),
+                    ("keystore" + charName[lastNameIndex]).toCharArray());
 
-            privateKey = (PrivateKey) ks.getKey(name, ("keystore" + charName[lastNameIndex]).toCharArray()); //load  keys to lybrary and load on server
+            privateKey = (PrivateKey) ks.getKey(name, ("keystore" + charName[lastNameIndex]).toCharArray());
 
-
-            // /////////---------------------------before---------------
-            // File filePublicKey = new File(path.getParent() + "/certificates/users/user1public.key");
-            // FileInputStream fis = new FileInputStream(path.getParent() + "/certificates/users/user1public.key");
-            // //byte[] _encodedPublicKey = new byte[(int) filePublicKey.length()];
-            // byte[] _encodedPublicKey = DatatypeConverter.parseHexBinary(filePublicKey);
-            // fis.read(_encodedPublicKey);
-            // fis.close();
-            // KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            // X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
-            //         _encodedPublicKey);
-            // System.out.println(_encodedPublicKey);
-            // PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
-
-            // ////// ----------------create---------------------
-            // KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA");
-            // keyGen.initialize(1024);
-			// KeyPair generatedKeyPair = keyGen.genKeyPair();
-
-            // PrivateKey genprivateKey = generatedKeyPair.getPrivate();
-            // PublicKey genpublicKey = generatedKeyPair.getPublic();
-     
-            // ////// ----------------save---------------------
-            // // Store Public Key.
-            // X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(
-            //     genpublicKey.getEncoded());
-            // FileOutputStream fos = new FileOutputStream(path.getParent() + "/certificates/server/Spublic.key");
-            // fos.write(x509EncodedKeySpec.getEncoded());
-            // fos.close();
-     
-            // // Store Private Key.
-            // PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(
-            //     genprivateKey.getEncoded());
-            // fos = new FileOutputStream(path.getParent() + "/certificates/server/Sprivate.key");
-            // fos.write(pkcs8EncodedKeySpec.getEncoded());
-            // fos.close();
-            /// ------------------load-----------
-
-            // KeyFactory keyFactory = KeyFactory.getInstance("DSA");
-
-            // File filePublicKey = new File(path.getParent() + "/certificates/javacert/serverpub.key");
-            // FileInputStream fis = new FileInputStream(path.getParent() + "/certificates/javacert/serverpub.key");
-            // byte[] encodedPublicKey = new byte[(int) filePublicKey.length()];
-            // fis.read(encodedPublicKey);
-            // fis.close();
-
-            // X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(
-            //     encodedPublicKey);
-            // publicKey = keyFactory.generatePublic(publicKeySpec);
-
-            
-            byte[] keyBytes = Files.readAllBytes(Paths.get(path.getParent() + "/certificates/javacert/serverpub.key"));
+            byte[] keyBytes = Files.readAllBytes(
+                    Paths.get(path.getParent() + "/certificates/javacert/users/user" + charName[lastNameIndex]
+                            + "pub.key"));
 
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
             KeyFactory kf = KeyFactory.getInstance("RSA");
             publicKey = kf.generatePublic(spec);
-
-            
-            System.out.println("publicKey");
-            System.out.println(publicKey);
-            
-            // // Read Private Key.
-            // File filePrivateKey = new File(path.getParent() + "/certificates/javacert/server.key");
-            // fis = new FileInputStream(path.getParent() + "/certificates/javacert/server.key");
-            // byte[] encodedPrivateKey = new byte[(int) filePrivateKey.length()];
-            // fis.read(encodedPrivateKey);
-            // fis.close();
-    
-            // PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(
-            //         encodedPrivateKey);
-            // privateKey = keyFactory.generatePrivate(privateKeySpec);
-            
-            ////// ----------------end-------------------
-
 
         } catch (Exception e) {
             System.out.println(e);

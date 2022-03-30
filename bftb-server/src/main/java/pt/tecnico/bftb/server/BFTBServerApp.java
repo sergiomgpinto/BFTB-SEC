@@ -1,6 +1,8 @@
 package pt.tecnico.bftb.server;
 
 import java.io.FileInputStream;
+import java.nio.file.Files;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,15 +12,17 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
-
+import java.security.spec.X509EncodedKeySpec;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.List;
+
 import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
@@ -57,12 +61,21 @@ public class BFTBServerApp {
             String originPath = System.getProperty("user.dir");
             Path path = Paths.get(originPath);
 
-            System.out.println(path.getParent() + "/certificates/server/ServerKeyStore.jks");
-            
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(path.getParent() + "/certificates/server/ServerKeyStore.jks"), "serverkeystore".toCharArray());
+            ks.load(new FileInputStream(path.getParent() + "/certificates/javacert/server/serverkeystore.jks"),
+                    "serverkeystore".toCharArray());
 
             System.out.println(ks.getKey("server", "serverkeystore".toCharArray()));
+
+            byte[] keyBytes = Files.readAllBytes(
+                    Paths.get(path.getParent() + "/certificates/javacert/server/serverpub.key"));
+
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            KeyFactory kf = KeyFactory.getInstance("RSA");
+            serverPublicKey = kf.generatePublic(spec);
+
+            System.out.println(serverPublicKey);
+
         } catch (Exception e) {
             System.out.println(e);
         }
