@@ -88,7 +88,7 @@ public class BFTBServerLogic {
         }
     }
 
-    public List<String> audit(String key) throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount {
+    public synchronized List<String> audit(String key) throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount {
 
         List<String> set = new ArrayList<>();
         boolean ACCOUNT_FOUND = false;
@@ -137,7 +137,7 @@ public class BFTBServerLogic {
         return ret;
     }
 
-    public List<String> getAllPublicKeys() {
+    public synchronized List<String> getAllPublicKeys() {
         List<String> result = new ArrayList<>();
 
         for (Account account : _accounts) {
@@ -146,7 +146,7 @@ public class BFTBServerLogic {
         return result;
     }
 
-    public String receiveAmount(String receiverKey, String senderKey, int transactionId, boolean answer)
+    public synchronized String receiveAmount(String receiverKey, String senderKey, int transactionId, boolean answer)
             throws NonExistentAccount, NonExistentTransaction, NoAuthorization, BFTBDatabaseException {
 
         Account receiverAccount = searchAccount(receiverKey);
@@ -258,7 +258,7 @@ public class BFTBServerLogic {
         }
     }
 
-    public Account searchAccount(String key) {
+    public synchronized Account searchAccount(String key) {
         for (Account account : _accounts) {
             if (account.getPublicKeyString().equals(key)) {// Account already exists.
                 return account;
@@ -268,7 +268,7 @@ public class BFTBServerLogic {
 
     }
 
-    private void recoverBFTBServerState() {
+    private synchronized void recoverBFTBServerState() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection(
