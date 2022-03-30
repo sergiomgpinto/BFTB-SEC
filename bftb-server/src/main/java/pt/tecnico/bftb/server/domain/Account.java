@@ -10,8 +10,8 @@ import java.util.List;
 
 public class Account {
 
-    private int _balance = 1000;// TODO Add random generator
-    private final PublicKey _publicKey;
+    private int _balance;
+    private PublicKey _publicKey = null;
     private final String _publicKeyString;
     static final String NOT_ENOUGH_BALANCE = "Account has no sufficient funds to execute transaction.";
     static final String SUCCESS_TRANSACTION = "Transaction executed with success";
@@ -20,8 +20,14 @@ public class Account {
     ArrayList<Pending> _pending = new ArrayList<>();
 
     public Account(PublicKey publicKey,int number_of_accounts) {
+        _balance = 1000;
         _publicKey = publicKey;
         _publicKeyString = "PublicKey" + String.valueOf(number_of_accounts);
+    }
+
+    public Account(int balance, String publicKeyString ) {
+        _balance = balance;
+        _publicKeyString = publicKeyString;
     }
 
     public int getBalance(){
@@ -76,6 +82,10 @@ public class Account {
 
             return SUCCESS_TRANSACTION;
         }
+    }
+    public synchronized void addTransactionRecoverState(String publicKey, int amount, TransactionType type) {
+        Transaction transaction = new Transaction(publicKey,amount,type);
+        _transactions.add(transaction);
     }
 
     public List<Transaction> getTransactions(){
