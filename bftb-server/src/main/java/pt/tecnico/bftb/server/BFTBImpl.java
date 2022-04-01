@@ -80,7 +80,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     
             publicKey = cert.getPublicKey();
     
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry(user, new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry(user, new KeyStore.PasswordProtection(("keystore1").toCharArray()));
     
             privateKey = priv.getPrivateKey();
         } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableEntryException e) {

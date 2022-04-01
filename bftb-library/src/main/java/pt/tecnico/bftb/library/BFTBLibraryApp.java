@@ -11,6 +11,7 @@ import java.security.Security;
 import java.security.Signature;
 import java.security.SignatureException;
 import java.security.Provider.Service;
+import java.util.Set;
 import java.util.TreeSet;
 
 import javax.crypto.BadPaddingException;
@@ -85,15 +86,9 @@ public class BFTBLibraryApp {
 
         Cipher cipher;
         byte[] signature = null;
-        TreeSet<String> algorithms = new TreeSet<>();
-            for (Provider provider : Security.getProviders())
-                for (Service service : provider.getServices())
-                    if (service.getType().equals("Signature"))
-                        algorithms.add(service.getAlgorithm());
-            for (String algorithm : algorithms)
-                System.out.println(algorithm);
+        Set<String> algs = new TreeSet<>();
         try {
-            cipher = Cipher.getInstance("SHA256withRSA");
+            cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE, signprivatekey);
             signature = cipher.doFinal(inputhash);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
