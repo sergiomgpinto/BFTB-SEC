@@ -63,14 +63,37 @@ message EncryptedMessage{
   string encryptedmessage = 1;
 }
 
+//------------------------------------------- encrypted structure --------------------//
+message EncryptedStruck{
+  string encryptedhash = 1;
+  Unencriptedhash unencriptedhash = 2;
+}
+
+message Unencriptedhash{
+  Sequencemessage sequencemessage = 1;
+  bytes senderKey = 2;
+}
+
+message Sequencemessage{
+  string message = 1;
+  int32 nonce = 2;
+}
+
 /*----------------------------- Requests & Responses ------------------------------*/
 
+message NonceRequest{
+  bytes senderKey = 1;
+}
 
+message NonceResponse{
+  int32 nonce = 2;
+}
 
 /*------------------------------------ service ------------------------------------*/
 
 service BFTB{
-  rpc openAccount(EncryptedMessage) returns (EncryptedMessage);
+  rpc getNonce (NonceRequest) returns (NonceResponse);
+  rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(SendAmountRequest) returns (SendAmountResponse);
   rpc checkAccount(CheckAccountRequest) returns (CheckAccountResponse);
   rpc audit(AuditRequest) returns (AuditResponse);

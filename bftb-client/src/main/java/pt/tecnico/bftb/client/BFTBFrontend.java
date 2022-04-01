@@ -1,6 +1,7 @@
 package pt.tecnico.bftb.client;
 
 import java.security.PrivateKey;
+import java.security.PublicKey;
 
 import com.google.protobuf.ByteString;
 
@@ -9,6 +10,7 @@ import io.grpc.ManagedChannelBuilder;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
+import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
@@ -23,10 +25,10 @@ public class BFTBFrontend {
     private String _host;
     private BFTBLibraryApp _library;
 
-    public BFTBFrontend(String host, int port, PrivateKey privateKey) {
+    public BFTBFrontend(String host, int port, PrivateKey privateKey, PublicKey publickey) {
         _host = host;
         _port = port;
-        _library = new BFTBLibraryApp(privateKey);
+        _library = new BFTBLibraryApp(privateKey, publickey);
     }
 
     public BFTBGrpc.BFTBBlockingStub StubCreator() {
@@ -37,7 +39,8 @@ public class BFTBFrontend {
 
     public OpenAccountResponse openAccount(ByteString encodedPublicKey) {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-        return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey)));
+        NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));
+        return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey, nonce.getNonce())));
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey,

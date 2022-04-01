@@ -1,10 +1,22 @@
 package pt.tecnico.bftb.server;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.InvalidKeyException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.UnrecoverableEntryException;
+import java.security.KeyStore.PrivateKeyEntry;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
 
 import com.google.common.io.BaseEncoding;
@@ -30,11 +42,15 @@ import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
+import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
+import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
 import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.crypto.BadPaddingException;
@@ -51,72 +67,88 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     PrivateKey privateKey = null;
     PublicKey publicKey = null;
 
+    private void loadKeys(String user){
+        String originPath = System.getProperty("user.dir");
+        Path path = Paths.get(originPath);
+
+        KeyStore ks;
+        try {
+            ks = KeyStore.getInstance("JKS");
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/"+ user +"KeyStore.jks")), ("keystore" + user).toCharArray());
+    
+            Certificate cert = ks.getCertificate(user);
+    
+            publicKey = cert.getPublicKey();
+    
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry(user, new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
+    
+            privateKey = priv.getPrivateKey();
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableEntryException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String Encript(String normalMessage){
+        return null;
+    }
+
+    private byte[] Decript(String encriptedString){
+        byte[] data = encriptedString.getBytes();
+        Cipher cipher;
+        byte[] decryptedMessageHash = null;
+        try {
+            cipher = Cipher.getInstance("SHA256withRSA");
+            cipher.init(Cipher.DECRYPT_MODE, publicKey);
+            decryptedMessageHash = cipher.doFinal(data);
+
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+            e.printStackTrace();
+        }
+
+        return decryptedMessageHash; 
+    }
+    
+    private byte[] hash(String inputdata){
+        byte[] data = inputdata.getBytes();
+
+        // hash
+
+        byte[] hash = null;
+        MessageDigest sha;
+        try {
+            sha = MessageDigest.getInstance("SHA-256");
+            sha.update(data);
+            hash = sha.digest();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+
+        return hash;
+
+    }
+
     @Override
-    public void openAccount(EncryptedMessage request, StreamObserver<EncryptedMessage> responseObserver) {
+    public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver){
+        NonceResponse response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(publicKey)).build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
 
-        Cipher decryptCipher;
-        byte[] decryptedMessageBytes = null;
-        try {
-            decryptCipher = Cipher.getInstance("RSA");
-            decryptCipher.init(Cipher.DECRYPT_MODE, publicKey);
-            decryptedMessageBytes = decryptCipher.doFinal(request.getEncryptedmessage().getBytes());
-        } catch (NoSuchAlgorithmException | BadPaddingException | IllegalBlockSizeException | InvalidKeyException | NoSuchPaddingException e1) {
-            e1.printStackTrace();
-        }
+    @Override
+    public void openAccount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        String decryptedMessage = new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+        loadKeys("user1");
 
-        OpenAccountRequest requestOpen = null;
-        try {
-            requestOpen = OpenAccountRequest.parseFrom(BaseEncoding.base64().decode(decryptedMessage));
-        } catch (InvalidProtocolBufferException e1) {
-            e1.printStackTrace();
-        }
+        byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()));
+        byte[] decriptedhash = Decript(request.getEncryptedhash());
 
-        ByteString key = requestOpen.getKey();
-        OpenAccountResponse response;
+        boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
 
-        if (key == null) {
-            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
-        }
-        try {
-            String ret = _bftb.openAccount(key);
+        System.out.println("the message hash is " + isCorrect);
+        // -------------------------------------------------------------------------//
 
-            if (ret.indexOf(":") != -1){
-                String[] values = ret.split(":");
-                response = OpenAccountResponse.newBuilder().setResponse(values[0]).setPublicKey(values[1]).build();
-            }
-            else{
-                response = OpenAccountResponse.newBuilder().setResponse(ret).build();
-            }
-
-            String openAccountResponseString = BaseEncoding.base64().encode(response.toByteArray());
-            byte[] encryptedMessageBytes = null;
-            try{
-                Cipher encryptCipher = Cipher.getInstance("RSA");
-                encryptCipher.init(Cipher.ENCRYPT_MODE, privateKey); //server Private Key
-                byte[] secretMessageBytes = openAccountResponseString.getBytes(StandardCharsets.UTF_8);
-                encryptedMessageBytes = encryptCipher.doFinal(secretMessageBytes);
-            } catch (IllegalBlockSizeException e) {  //// ??
-                e.printStackTrace();
-            } catch (BadPaddingException e) {
-                e.printStackTrace();
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (NoSuchPaddingException e) {
-                e.printStackTrace();
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-            }
-            String encodedMessage = new String(encryptedMessageBytes, StandardCharsets.UTF_8);
-            EncryptedMessage responseencripted = EncryptedMessage.newBuilder().setEncryptedmessage(encodedMessage).build();
-
-            responseObserver.onNext(responseencripted);
+            responseObserver.onNext(null);
             responseObserver.onCompleted();
-
-        } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
-            responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
-        }
 
     }
     @Override

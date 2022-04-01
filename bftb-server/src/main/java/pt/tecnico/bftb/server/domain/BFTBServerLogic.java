@@ -8,16 +8,27 @@ import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
 public class BFTBServerLogic {
 
     HashSet<Account> _accounts = new HashSet<>();
+    HashMap<PublicKey, Integer> nonces = new HashMap<>();
     private int _number_of_accounts = 0;
+    private final static SecureRandom randomGenerator = new SecureRandom();
+
+
+    public synchronized int newNonce(PublicKey publicKey){
+        int nonce = randomGenerator.nextInt();
+        nonces.put(publicKey, nonce);
+        return nonce;
+    }
 
     public synchronized String openAccount(ByteString key) throws InvalidKeySpecException, NoSuchAlgorithmException {
         PublicKey publicKey = KeyFactory.getInstance("DSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
