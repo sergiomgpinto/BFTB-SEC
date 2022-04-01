@@ -21,6 +21,7 @@ import pt.tecnico.bftb.grpc.Bftb.OpenAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
+import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
 import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
@@ -151,8 +152,33 @@ public class BFTBLibraryApp {
                 .setResponse(accResponse.getResponse()).build();
     }
 
-    public CheckAccountRequest checkAccount(String publicKey) {
-        return CheckAccountRequest.newBuilder().setKey(publicKey).build();
+    public EncryptedStruck checkAccount(ByteString bytepublic, int nonce) {
+
+        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setCheckAccountRequest(
+                CheckAccountRequest.newBuilder().setKey(bytepublic).build()).setNonce(nonce).build();
+        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(bytepublic).build();
+
+        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+
+        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(hash(sequencemessagetoencrypt))).setUnencriptedhash(unencriptedhash).build();
+    }
+
+    public CheckAccountResponse checkAccountResponse(EncryptedStruck response) throws ManipulatedPackageException{
+
+        byte[] calculatedHash = hash(BaseEncoding.base64()
+                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+
+        CheckAccountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getCheckAccountResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getEncryptedhash().toByteArray());
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        return CheckAccountResponse.newBuilder().setBalance(accResponse.getBalance()).addAllPending(accResponse.getPendingList()).build();
     }
 
     public AuditRequest audit(String publicKey) {
