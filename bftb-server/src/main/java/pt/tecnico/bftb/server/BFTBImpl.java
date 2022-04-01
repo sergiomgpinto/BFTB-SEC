@@ -33,8 +33,6 @@ import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountRequest;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountRequest;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
@@ -64,31 +62,38 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     private BFTBServerLogic _bftb = new BFTBServerLogic();
 
-    PrivateKey privateKey = null;
+    PrivateKey serverPrivateKey = null;
     PublicKey publicKey = null;
 
-    private void loadKeys(int user){
+    public BFTBImpl(PrivateKey _serverPrivateKey) {
+        serverPrivateKey = _serverPrivateKey;
+    }
+
+    private void loadKeys(int user) {
         String originPath = System.getProperty("user.dir");
         Path path = Paths.get(originPath);
 
         KeyStore ks;
         try {
             ks = KeyStore.getInstance("JKS");
-            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User"+ user +"KeyStore.jks")), ("keystore" + user).toCharArray());
-    
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User" + user + "KeyStore.jks")),
+                    ("keystore" + user).toCharArray());
+
             Certificate cert = ks.getCertificate("user" + user);
-    
+
             publicKey = cert.getPublicKey();
-    
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry("user" + user, new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
-    
+
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("user" + user,
+                    new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
+
             privateKey = priv.getPrivateKey();
-        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableEntryException e) {
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException
+                | UnrecoverableEntryException e) {
             e.printStackTrace();
         }
     }
 
-    private String Encript(String normalMessage){
+    private String Encript(String normalMessage) {
         return null;
     }
 
@@ -105,7 +110,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             e.printStackTrace();
         }
 
-        return decryptedMessageHash;
+        return decryptedMessageHash; 
     }
 
     private byte[] hash(String inputdata){
@@ -176,6 +181,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         responseObserver.onNext(null);
         responseObserver.onCompleted();
     }
+
     @Override
     public void sendAmount(SendAmountRequest request, StreamObserver<SendAmountResponse> responseObserver) {
         String senderKey = request.getSenderKey();
@@ -209,6 +215,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
         }
     }
+
     @Override
     public void checkAccount(CheckAccountRequest request, StreamObserver<CheckAccountResponse> responseObserver) {
         String key = request.getKey();
@@ -218,14 +225,13 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
             List<String> ret = _bftb.checkAccount(key);
 
-            //Owner of the account has no pending transactions.
-            if (ret.size() == 1){
+            // Owner of the account has no pending transactions.
+            if (ret.size() == 1) {
                 List<String> pending = new ArrayList<>();
                 pending.add(Label.NO_PENDING_TRANSACTIONS);
                 response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(pending).build();
-            }
-            else{
+            } else {
                 response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(ret.subList(1, ret.size())).build();
             }
@@ -297,6 +303,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
     }
+
     public void searchKeys(SearchKeysRequest request, StreamObserver<SearchKeysResponse> responseObserver) {
 
         SearchKeysResponse response = SearchKeysResponse.newBuilder().addAllResult(_bftb.getAllPublicKeys()).build();

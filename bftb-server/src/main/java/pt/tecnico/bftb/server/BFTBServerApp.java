@@ -9,6 +9,8 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.KeyStore.PrivateKeyEntry;
+import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 
 import java.security.KeyPairGenerator;
@@ -18,6 +20,7 @@ import java.security.PublicKey;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
+import java.util.HashMap;
 import java.util.List;
 import com.google.protobuf.ByteString;
 
@@ -38,6 +41,7 @@ public class BFTBServerApp {
     static PublicKey serverPublicKey;
 
     public static void main(String[] args) throws IOException, InterruptedException {
+
         System.out.println("Byzantine Fault Tolerant Banking server");
 
         // receive and print arguments
@@ -57,18 +61,26 @@ public class BFTBServerApp {
             String originPath = System.getProperty("user.dir");
             Path path = Paths.get(originPath);
 
-            System.out.println(path.getParent() + "/certificates/server/ServerKeyStore.jks");
-            
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(path.getParent() + "/certificates/server/ServerKeyStore.jks"), "serverkeystore".toCharArray());
+            ks.load(new FileInputStream(path.getParent() + "/certificates/keys/GlobalKeyStore.jks"),
+                    "keystore".toCharArray());
 
-            System.out.println(ks.getKey("server", "serverkeystore".toCharArray()));
+            Certificate cert = ks.getCertificate("server");
+
+            serverPublicKey = cert.getPublicKey();
+            System.out.println(serverPublicKey);
+
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("server",
+                    new KeyStore.PasswordProtection(("keystore").toCharArray()));
+
+            serverPrivateKey = priv.getPrivateKey();
+
         } catch (Exception e) {
             System.out.println(e);
         }
 
         // Implementation of server.
-        final BindableService impl = new BFTBImpl();
+        final BindableService impl = new BFTBImpl(serverPrivateKey);
         Server server = ServerBuilder.forPort(port).addService(impl).build();
 
         server.start();
