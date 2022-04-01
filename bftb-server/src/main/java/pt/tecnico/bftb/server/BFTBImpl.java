@@ -30,11 +30,10 @@ import pt.tecnico.bftb.server.domain.NoAccountException;
 import pt.tecnico.bftb.server.domain.exception.NoAuthorization;
 import pt.tecnico.bftb.server.domain.exception.NonExistentAccount;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
+import pt.tecnico.bftb.grpc.BFTBGrpc.BFTBImplBase;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountRequest;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountRequest;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
@@ -64,35 +63,42 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     private BFTBServerLogic _bftb = new BFTBServerLogic();
 
-    PrivateKey privateKey = null;
+    PrivateKey serverPrivateKey = null;
     PublicKey publicKey = null;
 
-    private void loadKeys(int user){
+    public BFTBImpl(PrivateKey _serverPrivateKey) {
+        serverPrivateKey = _serverPrivateKey;
+    }
+
+    private void loadKeys(int user) {
         String originPath = System.getProperty("user.dir");
         Path path = Paths.get(originPath);
 
         KeyStore ks;
         try {
             ks = KeyStore.getInstance("JKS");
-            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User"+ user +"KeyStore.jks")), ("keystore" + user).toCharArray());
-    
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User" + user + "KeyStore.jks")),
+                    ("keystore" + user).toCharArray());
+
             Certificate cert = ks.getCertificate("user" + user);
-    
+
             publicKey = cert.getPublicKey();
-    
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry("user" + user, new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
-    
+
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("user" + user,
+                    new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
+
             privateKey = priv.getPrivateKey();
-        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableEntryException e) {
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException
+                | UnrecoverableEntryException e) {
             e.printStackTrace();
         }
     }
 
-    private String Encript(String normalMessage){
+    private String Encript(String normalMessage) {
         return null;
     }
 
-    private byte[] Decript(String encriptedString){
+    private byte[] Decript(String encriptedString) {
         byte[] data = encriptedString.getBytes();
         Cipher cipher;
         byte[] decryptedMessageHash = null;
@@ -101,14 +107,15 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             cipher.init(Cipher.DECRYPT_MODE, publicKey);
             decryptedMessageHash = cipher.doFinal(data);
 
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
+                | BadPaddingException e) {
             e.printStackTrace();
         }
 
-        return decryptedMessageHash; 
+        return decryptedMessageHash;
     }
-    
-    private byte[] hash(String inputdata){
+
+    private byte[] hash(String inputdata) {
         byte[] data = inputdata.getBytes();
 
         // hash
@@ -128,7 +135,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     }
 
     @Override
-    public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver){
+    public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver) {
         NonceResponse response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(publicKey)).build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -139,7 +146,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         loadKeys(1);
 
-        byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()));
+        byte[] calculatedHash = hash(
+                BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()));
         byte[] decriptedhash = Decript(request.getEncryptedhash());
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
@@ -147,10 +155,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         System.out.println("the message hash is " + isCorrect);
         // -------------------------------------------------------------------------//
 
-            responseObserver.onNext(null);
-            responseObserver.onCompleted();
+        responseObserver.onNext(null);
+        responseObserver.onCompleted();
 
     }
+
     @Override
     public void sendAmount(SendAmountRequest request, StreamObserver<SendAmountResponse> responseObserver) {
         String senderKey = request.getSenderKey();
@@ -167,9 +176,10 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
         }
         if (senderKey.equals(receiverKey)) {
-            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
+            responseObserver
+                    .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
         }
-        if (amount <= 0){
+        if (amount <= 0) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_AMOUNT).asRuntimeException());
         }
 
@@ -184,6 +194,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
         }
     }
+
     @Override
     public void checkAccount(CheckAccountRequest request, StreamObserver<CheckAccountResponse> responseObserver) {
         String key = request.getKey();
@@ -193,14 +204,13 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
             List<String> ret = _bftb.checkAccount(key);
 
-            //Owner of the account has no pending transactions.
-            if (ret.size() == 1){
+            // Owner of the account has no pending transactions.
+            if (ret.size() == 1) {
                 List<String> pending = new ArrayList<>();
                 pending.add(Label.NO_PENDING_TRANSACTIONS);
                 response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(pending).build();
-            }
-            else{
+            } else {
                 response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(ret.subList(1, ret.size())).build();
             }
@@ -227,25 +237,24 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
         }
         if (senderKey.equals(receiverKey)) {
-            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
+            responseObserver
+                    .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
         }
         if (transactionId <= 0) {
-            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_TRANSACTION_ID).asRuntimeException());
+            responseObserver
+                    .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_TRANSACTION_ID).asRuntimeException());
         }
 
-        try{
+        try {
             ReceiveAmountResponse response = ReceiveAmountResponse.newBuilder().setResult(
-                    _bftb.receiveAmount(receiverKey,senderKey,transactionId,answer)).build();
+                    _bftb.receiveAmount(receiverKey, senderKey, transactionId, answer)).build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
-        }
-        catch (NonExistentAccount nea) {
+        } catch (NonExistentAccount nea) {
             responseObserver.onError(ABORTED.withDescription(nea.getMessage()).asRuntimeException());
-        }
-        catch (NonExistentTransaction net) {
+        } catch (NonExistentTransaction net) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(net.getMessage()).asRuntimeException());
-        }
-        catch (NoAuthorization na) {
+        } catch (NoAuthorization na) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
         }
 
@@ -272,6 +281,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
     }
+
     public void searchKeys(SearchKeysRequest request, StreamObserver<SearchKeysResponse> responseObserver) {
 
         SearchKeysResponse response = SearchKeysResponse.newBuilder().addAllResult(_bftb.getAllPublicKeys()).build();

@@ -50,16 +50,17 @@ public class BFTBClientApp {
             Path path = Paths.get(originPath);
 
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User"+ charName[lastNameIndex] +"KeyStore.jks")), ("keystore" + charName[lastNameIndex]).toCharArray());
-
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/GlobalKeyStore.jks")),
+                    "keystore".toCharArray());
             Certificate cert = ks.getCertificate(name);
 
             publicKey = cert.getPublicKey();
 
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry(name, new KeyStore.PasswordProtection(("keystore" + charName[lastNameIndex]).toCharArray()));
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry(name,
+                    new KeyStore.PasswordProtection(("keystore").toCharArray()));
 
             privateKey = priv.getPrivateKey();
-
+            System.out.println(privateKey);
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
             System.out.println("--------------private key---------------");
