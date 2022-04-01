@@ -90,7 +90,6 @@ public class BFTBClientApp {
         try {
             response = frontend.openAccount(encodedPublicKey);
             publicKeyString = response.getPublicKey();
-            System.out.println(response.getResponse());
         } catch (ManipulatedPackageException mpe) {
             System.out.println(mpe.getMessage());
         }

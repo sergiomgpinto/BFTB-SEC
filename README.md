@@ -56,6 +56,7 @@ only whitespace content allowed before start tag and not \u0 (position: START_DO
 ```
 
 Follow this link:
+
 https://stackoverflow.com/questions/13929633/maven-install-error-only-whitespace-content-allowed-before-start-tag-and-not
 
 To confirm that you have them installed, open a terminal and type:
