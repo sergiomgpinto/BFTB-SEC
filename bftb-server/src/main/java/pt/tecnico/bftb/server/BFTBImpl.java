@@ -217,24 +217,46 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     }
 
     @Override
-    public void checkAccount(CheckAccountRequest request, StreamObserver<CheckAccountResponse> responseObserver) {
-        String key = request.getKey();
-        CheckAccountResponse response;
+    public void checkAccount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
+        byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+        EncryptedStruck response;
+
+        boolean isCorrect = Arrays.equals(calculatedHash, request.getEncryptedhash().toByteArray());
+
+        if (request.getUnencriptedhash().getSenderKey() == null) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        if (!isCorrect) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }
+
+        CheckAccountResponse checkresponse = null;
         try {
 
-            List<String> ret = _bftb.checkAccount(key);
+            List<String> ret = _bftb.checkAccount(request.getUnencriptedhash().getSequencemessage().getCheckAccountRequest().getKey().toStringUtf8());
 
             // Owner of the account has no pending transactions.
             if (ret.size() == 1) {
                 List<String> pending = new ArrayList<>();
                 pending.add(Label.NO_PENDING_TRANSACTIONS);
-                response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
+                checkresponse = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(pending).build();
             } else {
-                response = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
+                checkresponse = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(ret.subList(1, ret.size())).build();
             }
+            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setCheckAccountResponse(checkresponse).setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
+            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
+
+            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(
+                    hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
+                    .setUnencriptedhash(unencriptedhash).build();
+
             responseObserver.onNext(response);
             responseObserver.onCompleted();
 

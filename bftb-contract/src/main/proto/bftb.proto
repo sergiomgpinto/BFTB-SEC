@@ -26,7 +26,7 @@ message SendAmountResponse{
 }
 
 message CheckAccountRequest{
-  string key = 1;
+  bytes key = 1;
 }
 
 message CheckAccountResponse{
@@ -106,7 +106,7 @@ service BFTB{
   rpc getNonce (NonceRequest) returns (NonceResponse);
   rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(SendAmountRequest) returns (SendAmountResponse);
-  rpc checkAccount(CheckAccountRequest) returns (CheckAccountResponse);
+  rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc audit(AuditRequest) returns (AuditResponse);
   rpc receiveAmount(ReceiveAmountRequest) returns (ReceiveAmountResponse);
   rpc searchKeys(SearchKeysRequest) returns (SearchKeysResponse);
