@@ -18,6 +18,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.bftb.grpc.Bftb;
+import pt.tecnico.bftb.server.domain.Account;
 import pt.tecnico.bftb.server.domain.Label;
 import pt.tecnico.bftb.server.domain.exception.*;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
@@ -320,50 +321,81 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     }
 
-    // @Override
-    // public void receiveAmount(EncryptedStruck request,
-    // StreamObserver<ReceiveAmountResponse> responseObserver) {
-    // String receiverKey = request.getReceiverKey();
-    // String senderKey = request.getSenderKey();
-    // int transactionId = request.getTransactionId();
-    // boolean answer = request.getAnswer();
+    @Override
+    public void receiveAmount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-    // if (receiverKey == null || receiverKey.isBlank()) {
-    // responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
-    // return;
-    // }
-    // if (senderKey == null || senderKey.isBlank()) {
-    // responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
-    // return;
-    // }
-    // if (senderKey.equals(receiverKey)) {
-    // responseObserver
-    // .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
-    // return;
-    // }
-    // if (transactionId <= 0) {
-    // responseObserver
-    // .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_TRANSACTION_ID).asRuntimeException());
-    // return;
-    // }
+        byte[] calculatedHash = hash(BaseEncoding.base64()
+                .encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
 
-    // try {
-    // ReceiveAmountResponse response =
-    // ReceiveAmountResponse.newBuilder().setResult(
-    // _bftb.receiveAmount(receiverKey, senderKey, transactionId, answer)).build();
-    // responseObserver.onNext(response);
-    // responseObserver.onCompleted();
-    // } catch (NonExistentAccount nea) {
-    // responseObserver.onError(ABORTED.withDescription(nea.getMessage()).asRuntimeException());
-    // } catch (NonExistentTransaction net) {
-    // responseObserver.onError(INVALID_ARGUMENT.withDescription(net.getMessage()).asRuntimeException());
-    // } catch (NoAuthorization na) {
-    // responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
-    // } catch (BFTBDatabaseException bde) {
-    // responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
-    // }
+        PublicKey publicKey = _bftb.searchAccount(request.getUnencriptedhash()
+                .getSequencemessage().getReceiveAmountRequest().getReceiverKey()).getPublicKey();
 
-    // }
+        byte[] decriptedhash = decrypt(request.getEncryptedhash().toByteArray(), publicKey);
+        EncryptedStruck response;
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
+
+        if (request.getUnencriptedhash().getSenderKey() == null) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        if (!isCorrect) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }
+        boolean answer = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getAnswer();
+        String receiverKey = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getReceiverKey();
+        String senderKey = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getSenderKey();
+        int transactionId = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getTransactionId();
+
+        if (receiverKey == null || receiverKey.isBlank()) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+        if (senderKey == null || senderKey.isBlank()) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+        if (senderKey.equals(receiverKey)) {
+            responseObserver
+                    .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
+            return;
+        }
+        if (transactionId <= 0) {
+            responseObserver
+                    .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_TRANSACTION_ID).asRuntimeException());
+            return;
+        }
+        //here
+        try {
+            ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
+                    .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer)).build();
+
+            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setReceiveAmountResponse(logicResponse)
+                    .setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
+            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder()
+                    .setSequencemessage(sequencemessage)
+                    .setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
+                    .build();
+
+            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(digitalSign(
+                            hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
+                    .setUnencriptedhash(unencriptedhash).build();
+
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        } catch (NonExistentAccount nea) {
+            responseObserver.onError(ABORTED.withDescription(nea.getMessage()).asRuntimeException());
+        } catch (NonExistentTransaction net) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(net.getMessage()).asRuntimeException());
+        } catch (NoAuthorization na) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
+        } catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
+        }
+    }
 
     @Override
     public void audit(AuditRequest request, StreamObserver<AuditResponse> responseObserver) {
