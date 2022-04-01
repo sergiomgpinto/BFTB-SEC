@@ -44,20 +44,21 @@ Download MySQL here:
 
 https://dev.mysql.com/downloads/installer/
 
-and follow the executable prompts using default parameters,
-After that you may need to add MySQL to variable path, as shown here:
+And follow the executable prompts using default parameters.
+
+After that you may need to add MySQL directory path to the env variable, as shown here:
 
 https://dev.mysql.com/doc/mysql-windows-excerpt/5.7/en/mysql-installation-windows-path.html
 
-in case you may have this error:
+In case you have this error, click on the link right after.
 
 ```
 only whitespace content allowed before start tag and not \u0 (position: START_DOCUMENT seen \u0... @1:1) -> [Help 1]
 ```
 
-Follow this link:
-
 https://stackoverflow.com/questions/13929633/maven-install-error-only-whitespace-content-allowed-before-start-tag-and-not
+
+(Sorry for the links. Since we had time issues it was more practical to leave the links.)
 
 To confirm that you have them installed, open a terminal and type:
 
@@ -79,7 +80,7 @@ CREATE DATABASE bftbServer;
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
 ```
 
-To create the schemas in the database type in the root directory:
+To create the schemas in the database type in the **root directory**:
 
 ```
 mvn flyway:migrate
@@ -117,13 +118,23 @@ To run the client type:
 mvn compile exec:java
 ```
 
+<mark>Important</mark>
+Don't forget that after every run on the bftb system the following commands have to be typed:
+
+```
+mvn flyway:clean
+
+mvn flyway:migrate
+```
+In the next delivery we will make these commands automatic through goals in the maven pom.
+
 ### Testing
 
-to be done
-
+For this delivery, we did not develop any tests that demonstrate the mechanisms to provide security and dependability threats, unfortunately. 
+The system can only be tested through manual commands on the cmdPrompt windows.
 ### Demos
 
-to be done
+For this delivery, we did not develop any demos that demonstrate the mechanisms to provide security and dependability threats, unfortunately.
 
 ## Built With
 
