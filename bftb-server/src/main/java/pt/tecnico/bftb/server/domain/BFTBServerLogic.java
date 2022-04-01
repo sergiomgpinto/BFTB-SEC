@@ -24,14 +24,23 @@ public class BFTBServerLogic {
     private final static SecureRandom randomGenerator = new SecureRandom();
 
 
-    public synchronized int newNonce(PublicKey publicKey){
+    public synchronized int newNonce(ByteString publicKey) {
         int nonce = randomGenerator.nextInt();
-        nonces.put(publicKey, nonce);
+        PublicKey pubKey = null;
+
+        try {
+            pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.toByteArray()));
+        }
+        catch (Exception e) {
+            // Should never happen.
+        }
+        nonces.put(pubKey, nonce);
+        System.out.println(pubKey);
         return nonce;
     }
 
     public synchronized String openAccount(ByteString key) throws InvalidKeySpecException, NoSuchAlgorithmException {
-        PublicKey publicKey = KeyFactory.getInstance("DSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
+        PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
 
         // This function is restricting one account per user.
         for (Account account : _accounts) {

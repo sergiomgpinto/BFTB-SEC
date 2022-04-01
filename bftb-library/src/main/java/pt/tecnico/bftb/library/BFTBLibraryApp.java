@@ -52,8 +52,7 @@ public class BFTBLibraryApp {
         return NonceRequest.newBuilder().setSenderKey(encodedPublicKey).build();
     }
 
-    private byte[] hash(String inputdata){
-        byte[] data = inputdata.getBytes();
+    private byte[] hash(byte[] inputData){
 
         // hash
 
@@ -61,7 +60,7 @@ public class BFTBLibraryApp {
         MessageDigest sha;
         try {
             sha = MessageDigest.getInstance("SHA-256");
-            sha.update(data);
+            sha.update(inputData);
             hash = sha.digest();
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
@@ -71,18 +70,7 @@ public class BFTBLibraryApp {
 
     }
 
-    private String digitalsign (byte[] inputhash, PrivateKey signprivatekey){
-
-        // Signature dsaForSign;
-        // byte[] signature = null;
-        // try {
-        //     dsaForSign = Signature.getInstance("SHA256withRSA");
-        //     dsaForSign.initSign(signprivatekey);
-        //     dsaForSign.update(inputhash);
-        //     signature = dsaForSign.sign();
-        // } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException e) {
-        //     e.printStackTrace();
-        // }
+    private byte[] digitalsign (byte[] inputhash, PrivateKey signprivatekey){
 
         Cipher cipher;
         byte[] signature = null;
@@ -94,7 +82,7 @@ public class BFTBLibraryApp {
             e.printStackTrace();
         }
 
-        return new String(signature, StandardCharsets.UTF_8);
+        return signature;
 
     }
 
@@ -102,9 +90,9 @@ public class BFTBLibraryApp {
         Sequencemessage sequencemessage = Sequencemessage.newBuilder().setMessage("value").setNonce(nonce).build(); ///change value
         Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(encodedPublicKey).build();
 
-        String sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray());
-        
-        return EncryptedStruck.newBuilder().setEncryptedhash(digitalsign(hash(sequencemessagetoencrypt), _userPrivateKey)).setUnencriptedhash(unencriptedhash).build();
+        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+
+        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(digitalsign(hash(sequencemessagetoencrypt), _userPrivateKey))).setUnencriptedhash(unencriptedhash).build();
     }
 
     public OpenAccountResponse openAccountResponse(EncryptedStruck response){

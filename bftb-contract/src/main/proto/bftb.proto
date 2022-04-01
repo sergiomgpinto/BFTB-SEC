@@ -65,7 +65,7 @@ message EncryptedMessage{
 
 //------------------------------------------- encrypted structure --------------------//
 message EncryptedStruck{
-  string encryptedhash = 1;
+  bytes encryptedhash = 1;
   Unencriptedhash unencriptedhash = 2;
 }
 

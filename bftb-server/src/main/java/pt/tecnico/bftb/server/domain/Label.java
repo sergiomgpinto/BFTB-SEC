@@ -18,4 +18,5 @@ public interface Label {
     String NON_EXISTENT_TRANSACTION = "There is no transaction between given public key account and this account.";
     String NOT_ENOUGH_BALANCE = "Account has no sufficient funds to execute transaction.";
     String NO_AUTHORIZATION = "This account has no authorization to accept or reject this transaction.";
+    String ERROR_DECRYPT = "Either the message was tempered, duplicated or the public key given is invalid";
 }

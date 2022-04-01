@@ -92,22 +92,22 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         return null;
     }
 
-    private byte[] Decript(String encriptedString){
-        byte[] data = encriptedString.getBytes();
+    private byte[] decript(byte[] encryptedString){
         Cipher cipher;
         byte[] decryptedMessageHash = null;
+
         try {
             cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, publicKey);
-            decryptedMessageHash = cipher.doFinal(data);
+            decryptedMessageHash = cipher.doFinal(encryptedString);
 
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
 
-        return decryptedMessageHash; 
+        return decryptedMessageHash;
     }
-    
+
     private byte[] hash(String inputdata){
         byte[] data = inputdata.getBytes();
 
@@ -129,7 +129,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     @Override
     public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver){
-        NonceResponse response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(publicKey)).build();
+        NonceResponse response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getSenderKey())).build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
@@ -140,16 +140,41 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         loadKeys(1);
 
         byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()));
-        byte[] decriptedhash = Decript(request.getEncryptedhash());
+        byte[] decriptedhash = decript(request.getEncryptedhash().toByteArray());
+        EncryptedStruck response;
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
 
-        System.out.println("the message hash is " + isCorrect);
-        // -------------------------------------------------------------------------//
+        if (request.getUnencriptedhash().getSenderKey() == null) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
 
-            responseObserver.onNext(null);
+        if (!isCorrect) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }
+
+        /*try {
+            String ret = _bftb.openAccount(request.getUnencriptedhash().getSenderKey());
+
+            if (ret.indexOf(":") != -1){
+                String[] values = ret.split(":");
+                response = EncryptedStruck.newBuilder().setEncryptedhash().setUnencriptedhash().build();
+            }
+            else{
+                response = EncryptedStruck.newBuilder().setEncryptedhash().setUnencriptedhash().build();
+            }
+
+
+            responseObserver.onNext(response);
             responseObserver.onCompleted();
-
+        }
+        catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+            responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
+        }*/
+        responseObserver.onNext(null);
+        responseObserver.onCompleted();
     }
     @Override
     public void sendAmount(SendAmountRequest request, StreamObserver<SendAmountResponse> responseObserver) {
