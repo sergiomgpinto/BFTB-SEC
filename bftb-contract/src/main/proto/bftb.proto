@@ -106,7 +106,7 @@ service BFTB{
   rpc getNonce (NonceRequest) returns (NonceResponse);
   rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(EncryptedStruck) returns (EncryptedStruck);
-  rpc checkAccount(CheckAccountRequest) returns (CheckAccountResponse);
+  rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc audit(AuditRequest) returns (AuditResponse);
   rpc receiveAmount(EncryptedStruck) returns (EncryptedStruck);
   rpc searchKeys(SearchKeysRequest) returns (SearchKeysResponse);
