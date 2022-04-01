@@ -137,10 +137,16 @@ public class BFTBClientApp {
                             System.out.println(Label.INVALID_ARGS_CHECK_ACCOUNT);
                             continue;
                         }
-                        CheckAccountResponse check_account_response = frontend.checkAccount(splittedCommand[1]);
-                        System.out.println(Label.BALANCE + check_account_response.getBalance());
-                        for (String pendingTransaction : check_account_response.getPendingList()) {
-                            System.out.println(pendingTransaction);
+                        CheckAccountResponse check_account_response;
+                        try {
+                            check_account_response = frontend.checkAccount(splittedCommand[1]);
+                            System.out.println(Label.BALANCE + check_account_response.getBalance());
+                            for (String pendingTransaction : check_account_response.getPendingList()) {
+                                System.out.println(pendingTransaction);
+                            }
+                        } catch (ManipulatedPackageException e) { //////////////////////////////////////////////////
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
                         }
 
                         break;
@@ -178,11 +184,11 @@ public class BFTBClientApp {
                         System.out.println("List of public keys available:");
                         List<String> list_search_keys = frontend.searchKeys().getResultList();
 
-                        for (String publicKey : list_search_keys) {
-                            int id = Integer.parseInt(publicKey.substring(publicKey.length() - 1));
+                        for (String publicKeyList : list_search_keys) {
+                            int id = Integer.parseInt(publicKeyList.substring(publicKeyList.length() - 1));
 
                             System.out.println("User" + String.valueOf(id) + " account:");
-                            System.out.println("\t" + publicKey + "");
+                            System.out.println("\t" + publicKeyList + "");
                         }
                         break;
 

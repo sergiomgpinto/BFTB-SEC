@@ -2,21 +2,19 @@
 
 Highly Dependable Systems 2021-2022, 2nd semester project
 
-
 ## Authors
 
 **Group G41**
 
-
 ### Team members
 
-| Number | Name              | User                             | Email                                                |
-|--------|-------------------|----------------------------------|------------------------------------------------------|
-| 93575  | António Salgueiro | <https://github.com/Salg-0>     | <mailto:antonio.bastos.salgueiro@tecnico.ulisboa.pt> |
-| 93612  | Rodrigo Pinto     | <https://github.com/rodrigoappinto>   | <mailto:rodrigo.pinto@tecnico.ulisboa.pt>            |
-| 93614  | Sérgio Pinto      | <https://github.com/seeeerju>     | <mailto:sergio.g.pinto@tecnico.ulisboa.pt>           |
+| Number | Name              | User                                | Email                                                |
+| ------ | ----------------- | ----------------------------------- | ---------------------------------------------------- |
+| 93575  | António Salgueiro | <https://github.com/Salg-0>         | <mailto:antonio.bastos.salgueiro@tecnico.ulisboa.pt> |
+| 93612  | Rodrigo Pinto     | <https://github.com/rodrigoappinto> | <mailto:rodrigo.pinto@tecnico.ulisboa.pt>            |
+| 93614  | Sérgio Pinto      | <https://github.com/seeeerju>       | <mailto:sergio.g.pinto@tecnico.ulisboa.pt>           |
 
-![António](images/antonio.png) ![Rodrigo](images/rodrigo.png) ![Sérgio](images/sergio.png)
+<img src=images/antonio.png height=200 width=200> <img src=images/rodrigo.png height=200 width=200> <img src=images/sergio.png height=200 width=200>
 
 ## Getting Started
 
@@ -57,6 +55,7 @@ mysql -uroot
 CREATE DATABASE bftbServer;
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
 ```
+
 To create the schemas in the database type in the root directory:
 
 ```
@@ -105,6 +104,6 @@ to be done
 
 ## Built With
 
-* [Maven](https://maven.apache.org/) - Build Tool and Dependency Management
-* [gRPC](https://grpc.io/) - RPC framework
-* [MySQL](https://www.mysql.com) - Database Management System
+- [Maven](https://maven.apache.org/) - Build Tool and Dependency Management
+- [gRPC](https://grpc.io/) - RPC framework
+- [MySQL](https://www.mysql.com) - Database Management System
