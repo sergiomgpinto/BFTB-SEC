@@ -35,7 +35,7 @@ message CheckAccountResponse{
 }
 
 message AuditRequest{
-  string key = 1;
+  bytes key = 1;
 }
 
 message AuditResponse{
@@ -107,7 +107,7 @@ service BFTB{
   rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(EncryptedStruck) returns (EncryptedStruck);
   rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);
-  rpc audit(AuditRequest) returns (AuditResponse);
+  rpc audit(EncryptedStruck) returns (EncryptedStruck);
   rpc receiveAmount(EncryptedStruck) returns (EncryptedStruck);
   rpc searchKeys(SearchKeysRequest) returns (SearchKeysResponse);
 }

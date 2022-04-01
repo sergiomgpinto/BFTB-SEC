@@ -60,9 +60,11 @@ public class BFTBFrontend {
         return _library.checkAccountResponse(stub.checkAccount(_library.checkAccount(bytepublic, nonce.getNonce())));
     }
 
-    public AuditResponse audit(String publicKey) {
+    public AuditResponse audit(String publicKey) throws ManipulatedPackageException {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-        return stub.audit(_library.audit(publicKey));
+        ByteString bytepublic = ByteString.copyFrom(publicKey.getBytes());
+        NonceResponse nonce = stub.getNonce(_library.getNonce(bytepublic));
+        return _library.auditResponse(stub.audit(_library.audit(bytepublic, nonce.getNonce())));
     }
 
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,

@@ -36,6 +36,28 @@ brew install mysql
 brew services start mysql
 ```
 
+To install in Windows follow this guide:
+
+https://dev.mysql.com/doc/refman/8.0/en/windows-installation.html
+
+Download MySQL here:
+
+https://dev.mysql.com/downloads/installer/
+
+and follow the executable prompts using default parameters,
+After that you may need to add MySQL to variable path, as shown here:
+
+https://dev.mysql.com/doc/mysql-windows-excerpt/5.7/en/mysql-installation-windows-path.html
+
+in case you may have this error:
+
+```
+only whitespace content allowed before start tag and not \u0 (position: START_DOCUMENT seen \u0... @1:1) -> [Help 1]
+```
+
+Follow this link:
+https://stackoverflow.com/questions/13929633/maven-install-error-only-whitespace-content-allowed-before-start-tag-and-not
+
 To confirm that you have them installed, open a terminal and type:
 
 ```

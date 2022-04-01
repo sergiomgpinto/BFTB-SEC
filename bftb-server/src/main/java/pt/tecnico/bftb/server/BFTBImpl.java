@@ -106,7 +106,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver) {
 
         NonceResponse response = null;
-        System.out.println(request.getSenderKey().toString(StandardCharsets.UTF_8));
 
         if (request.getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
             response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getSenderKey()
@@ -398,16 +397,33 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     }
 
     @Override
-    public void audit(AuditRequest request, StreamObserver<AuditResponse> responseObserver) {
-        String key = request.getKey();
+    public void audit(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        if (key == null || key.isBlank()) {
+        byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+        EncryptedStruck response;
+
+        boolean isCorrect = Arrays.equals(calculatedHash, request.getEncryptedhash().toByteArray());
+
+        if (request.getUnencriptedhash().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
 
+        if (!isCorrect) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }        
         try {
-            AuditResponse response = AuditResponse.newBuilder().addAllSet(_bftb.audit(key)).build();
+            AuditResponse auditResponse = AuditResponse.newBuilder().addAllSet(_bftb.audit(request.getUnencriptedhash().getSequencemessage().getCheckAccountRequest().getKey().toStringUtf8())).build();
+            
+            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setAuditResponse(auditResponse).setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
+            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
+
+            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(
+                    hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
+                    .setUnencriptedhash(unencriptedhash).build();
+
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (NonExistentAccount nea) {

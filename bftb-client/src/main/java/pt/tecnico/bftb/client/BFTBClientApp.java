@@ -144,9 +144,9 @@ public class BFTBClientApp {
                             for (String pendingTransaction : check_account_response.getPendingList()) {
                                 System.out.println(pendingTransaction);
                             }
-                        } catch (ManipulatedPackageException e) { //////////////////////////////////////////////////
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
+                        } catch (ManipulatedPackageException mpe) { 
+                            System.out.println(mpe.getMessage());
+                 
                         }
 
                         break;
@@ -178,7 +178,12 @@ public class BFTBClientApp {
                             continue;
                         }
 
-                        List<String> list = frontend.audit(splittedCommand[1]).getSetList();
+                        List<String> list = null;
+                        try {
+                            list = frontend.audit(splittedCommand[1]).getSetList();
+                        } catch (ManipulatedPackageException mpe) {
+                            System.out.println(mpe.getMessage());
+                        }
 
                         for (String transaction : list) {
                             System.out.println(transaction);

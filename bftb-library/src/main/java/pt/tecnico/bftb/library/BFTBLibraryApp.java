@@ -20,6 +20,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
+import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
@@ -181,8 +182,33 @@ public class BFTBLibraryApp {
         return CheckAccountResponse.newBuilder().setBalance(accResponse.getBalance()).addAllPending(accResponse.getPendingList()).build();
     }
 
-    public AuditRequest audit(String publicKey) {
-        return AuditRequest.newBuilder().setKey(publicKey).build();
+    public EncryptedStruck audit(ByteString bytepublic, int nonce) {
+
+        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setAuditRequest(
+                AuditRequest.newBuilder().setKey(bytepublic).build()).setNonce(nonce).build();
+        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(bytepublic).build();
+
+        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+
+        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(hash(sequencemessagetoencrypt))).setUnencriptedhash(unencriptedhash).build();
+    }
+
+    public AuditResponse auditResponse(EncryptedStruck response) throws ManipulatedPackageException{
+
+        byte[] calculatedHash = hash(BaseEncoding.base64()
+                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+
+        AuditResponse accResponse = response.getUnencriptedhash().getSequencemessage().getAuditResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getEncryptedhash().toByteArray());
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        return AuditResponse.newBuilder().addAllSet(accResponse.getSetList()).build();
     }
 
     public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
