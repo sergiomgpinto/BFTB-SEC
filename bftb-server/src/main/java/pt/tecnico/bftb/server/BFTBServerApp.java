@@ -83,7 +83,6 @@ public class BFTBServerApp {
             Certificate cert = ks.getCertificate("server");
 
             serverPublicKey = cert.getPublicKey();
-            System.out.println(serverPublicKey);
 
             PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("server",
                     new KeyStore.PasswordProtection(("keystore").toCharArray()));
@@ -95,7 +94,7 @@ public class BFTBServerApp {
         }
 
         // Implementation of server.
-        final BindableService impl = new BFTBImpl(serverPrivateKey);
+        final BindableService impl = new BFTBImpl(serverPrivateKey,serverPublicKey);
         Server server = ServerBuilder.forPort(port).addService(impl).build();
 
         server.start();

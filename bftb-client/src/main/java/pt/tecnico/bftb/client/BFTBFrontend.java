@@ -18,6 +18,7 @@ import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.library.BFTBLibraryApp;
+import pt.tecnico.bftb.library.ManipulatedPackageException;
 
 public class BFTBFrontend {
 
@@ -37,7 +38,7 @@ public class BFTBFrontend {
         return BFTBGrpc.newBlockingStub(channel);
     }
 
-    public OpenAccountResponse openAccount(ByteString encodedPublicKey) {
+    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
         NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));
         return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey, nonce.getNonce())));

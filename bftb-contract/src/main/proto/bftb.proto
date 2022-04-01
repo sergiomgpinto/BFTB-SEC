@@ -75,8 +75,19 @@ message Unencriptedhash{
 }
 
 message Sequencemessage{
-  string message = 1;
-  int32 nonce = 2;
+  int32 nonce = 1;
+  OpenAccountRequest openAccountRequest = 2;
+  OpenAccountResponse openAccountResponse = 3;
+  SendAmountRequest sendAmountRequest = 4;
+  SendAmountResponse sendAmountResponse = 5;
+  CheckAccountRequest checkAccountRequest = 6;
+  CheckAccountResponse checkAccountResponse = 7;
+  AuditRequest auditRequest = 8;
+  AuditResponse auditResponse = 9;
+  ReceiveAmountRequest receiveAmountRequest = 10;
+  ReceiveAmountResponse receiveAmountResponse = 11;
+  SearchKeysRequest searchKeyRequest = 12;
+  SearchKeysResponse searchKeyResponse = 13;
 }
 
 /*----------------------------- Requests & Responses ------------------------------*/

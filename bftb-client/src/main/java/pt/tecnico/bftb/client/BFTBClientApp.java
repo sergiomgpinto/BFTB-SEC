@@ -20,8 +20,11 @@ import java.util.List;
 import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
+import pt.tecnico.bftb.grpc.Bftb;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
+import pt.tecnico.bftb.library.ManipulatedPackageException;
 
 public class BFTBClientApp {
 
@@ -74,17 +77,9 @@ public class BFTBClientApp {
                     new KeyStore.PasswordProtection(("keystore").toCharArray()));
 
             privateKey = priv.getPrivateKey();
-            System.out.println(privateKey);
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
-            System.out.println("--------------private key---------------");
-            System.out.println(privateKey);
-            System.out.println("-----------------public------------");
-            System.out.println(publicKey);
-            System.out.println("--------------end---------------");
-
         } catch (Exception e) {
-            System.out.println("mission failed");
             System.out.println(e);
         }
 
@@ -93,9 +88,17 @@ public class BFTBClientApp {
         BFTBFrontend frontend = new BFTBFrontend(host, port, privateKey, publicKey);// Frontend server implementation.
 
         /*---------------------------------- Registration into the server ----------------------------------*/
-        OpenAccountResponse response = frontend.openAccount(encodedPublicKey);
-        publicKeyString = response.getPublicKey();
-        System.out.println(response.getResponse());
+        OpenAccountResponse response = null;
+
+        try {
+            response = frontend.openAccount(encodedPublicKey);
+            publicKeyString = response.getPublicKey();
+            System.out.println(response.getResponse());
+        }
+        catch (ManipulatedPackageException mpe) {
+            System.out.println(mpe.getMessage());
+        }
+
         /*---------------------------------- Registration into the server ----------------------------------*/
         System.out.println(Label.TYPE_HELP);
         while (true) {
@@ -106,7 +109,17 @@ public class BFTBClientApp {
                 switch (splittedCommand[0]) {
                     case "open_account":
                         // Argument public key is predefined since each user only has one account.
-                        System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
+
+                        response = null;
+
+                        try {
+                            response = frontend.openAccount(encodedPublicKey);
+                            System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
+                        }
+                        catch (ManipulatedPackageException mpe) {
+                            System.out.println(mpe.getMessage());
+                        }
+
                         break;
 
                     case "send_amount":
