@@ -86,7 +86,6 @@ public class BFTBLibraryApp {
 
         Cipher cipher;
         byte[] signature = null;
-        Set<String> algs = new TreeSet<>();
         try {
             cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.ENCRYPT_MODE, signprivatekey);

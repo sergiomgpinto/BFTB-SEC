@@ -67,20 +67,20 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     PrivateKey privateKey = null;
     PublicKey publicKey = null;
 
-    private void loadKeys(String user){
+    private void loadKeys(int user){
         String originPath = System.getProperty("user.dir");
         Path path = Paths.get(originPath);
 
         KeyStore ks;
         try {
             ks = KeyStore.getInstance("JKS");
-            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/"+ user +"KeyStore.jks")), ("keystore" + user).toCharArray());
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/User"+ user +"KeyStore.jks")), ("keystore" + user).toCharArray());
     
-            Certificate cert = ks.getCertificate(user);
+            Certificate cert = ks.getCertificate("user" + user);
     
             publicKey = cert.getPublicKey();
     
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry(user, new KeyStore.PasswordProtection(("keystore1").toCharArray()));
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry)ks.getEntry("user" + user, new KeyStore.PasswordProtection(("keystore" + user).toCharArray()));
     
             privateKey = priv.getPrivateKey();
         } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | UnrecoverableEntryException e) {
@@ -97,7 +97,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         Cipher cipher;
         byte[] decryptedMessageHash = null;
         try {
-            cipher = Cipher.getInstance("SHA256withRSA");
+            cipher = Cipher.getInstance("RSA");
             cipher.init(Cipher.DECRYPT_MODE, publicKey);
             decryptedMessageHash = cipher.doFinal(data);
 
@@ -137,7 +137,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void openAccount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        loadKeys("user1");
+        loadKeys(1);
 
         byte[] calculatedHash = hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()));
         byte[] decriptedhash = Decript(request.getEncryptedhash());
