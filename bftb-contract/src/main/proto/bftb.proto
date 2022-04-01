@@ -59,14 +59,52 @@ message SearchKeysResponse{
   repeated string result = 1;
 }
 
+message EncryptedMessage{
+  string encryptedmessage = 1;
+}
+
+//------------------------------------------- encrypted structure --------------------//
+message EncryptedStruck{
+  bytes encryptedhash = 1;
+  Unencriptedhash unencriptedhash = 2;
+}
+
+message Unencriptedhash{
+  Sequencemessage sequencemessage = 1;
+  bytes senderKey = 2;
+}
+
+message Sequencemessage{
+  int32 nonce = 1;
+  OpenAccountRequest openAccountRequest = 2;
+  OpenAccountResponse openAccountResponse = 3;
+  SendAmountRequest sendAmountRequest = 4;
+  SendAmountResponse sendAmountResponse = 5;
+  CheckAccountRequest checkAccountRequest = 6;
+  CheckAccountResponse checkAccountResponse = 7;
+  AuditRequest auditRequest = 8;
+  AuditResponse auditResponse = 9;
+  ReceiveAmountRequest receiveAmountRequest = 10;
+  ReceiveAmountResponse receiveAmountResponse = 11;
+  SearchKeysRequest searchKeyRequest = 12;
+  SearchKeysResponse searchKeyResponse = 13;
+}
+
 /*----------------------------- Requests & Responses ------------------------------*/
 
+message NonceRequest{
+  bytes senderKey = 1;
+}
 
+message NonceResponse{
+  int32 nonce = 2;
+}
 
 /*------------------------------------ service ------------------------------------*/
 
 service BFTB{
-  rpc openAccount(OpenAccountRequest) returns (OpenAccountResponse);
+  rpc getNonce (NonceRequest) returns (NonceResponse);
+  rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(SendAmountRequest) returns (SendAmountResponse);
   rpc checkAccount(CheckAccountRequest) returns (CheckAccountResponse);
   rpc audit(AuditRequest) returns (AuditResponse);

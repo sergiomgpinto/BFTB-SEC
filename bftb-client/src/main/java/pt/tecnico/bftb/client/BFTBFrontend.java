@@ -1,11 +1,16 @@
 package pt.tecnico.bftb.client;
 
+import java.security.PrivateKey;
+import java.security.PublicKey;
+
 import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
+import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
@@ -13,6 +18,7 @@ import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.library.BFTBLibraryApp;
+import pt.tecnico.bftb.library.ManipulatedPackageException;
 
 public class BFTBFrontend {
 
@@ -20,10 +26,10 @@ public class BFTBFrontend {
     private String _host;
     private BFTBLibraryApp _library;
 
-    public BFTBFrontend(String host, int port) {
+    public BFTBFrontend(String host, int port, PrivateKey privateKey, PublicKey publickey) {
         _host = host;
         _port = port;
-        _library = new BFTBLibraryApp();
+        _library = new BFTBLibraryApp(privateKey, publickey);
     }
 
     public BFTBGrpc.BFTBBlockingStub StubCreator() {
@@ -32,9 +38,10 @@ public class BFTBFrontend {
         return BFTBGrpc.newBlockingStub(channel);
     }
 
-    public OpenAccountResponse openAccount(ByteString encodedPublicKey) {
+    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-        return stub.openAccount(_library.openAccount(encodedPublicKey));
+        NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));
+        return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey, nonce.getNonce())));
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey,

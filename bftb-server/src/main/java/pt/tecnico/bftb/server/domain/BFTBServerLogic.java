@@ -6,10 +6,12 @@ import pt.tecnico.bftb.server.database.BFTBMySqlDriver;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -17,14 +19,33 @@ public class BFTBServerLogic {
 
     private BFTBMySqlDriver mySqlDriver = new BFTBMySqlDriver();
     HashSet<Account> _accounts = new HashSet<>();
+    HashMap<PublicKey, Integer> nonces = new HashMap<>();
     private int _number_of_accounts = 0;
+    private final static SecureRandom randomGenerator = new SecureRandom();
+
+
+    public synchronized int newNonce(ByteString publicKey) {
+        int nonce = randomGenerator.nextInt();
+        PublicKey pubKey = null;
+
+        try {
+            pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.toByteArray()));
+        }
+        catch (Exception e) {
+            // Should never happen.
+        }
+        nonces.put(pubKey, nonce);
+        System.out.println(pubKey);
+        return nonce;
+    }
 
     public BFTBServerLogic() {
         recoverBFTBServerState();
     }
+
     public synchronized String openAccount(ByteString key) throws InvalidKeySpecException, NoSuchAlgorithmException
             ,BFTBDatabaseException {
-        PublicKey publicKey = KeyFactory.getInstance("DSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
+        PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
 
         // This function is restricting one account per user.
         for (Account account : _accounts) {

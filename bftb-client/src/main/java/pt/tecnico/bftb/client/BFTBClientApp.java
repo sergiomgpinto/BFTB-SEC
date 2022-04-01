@@ -1,17 +1,30 @@
 package pt.tecnico.bftb.client;
 
-import java.security.KeyPairGenerator;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.KeyFactory;
+import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.KeyPair;
-import java.security.SecureRandom;
-
+import java.security.KeyStore.PrivateKeyEntry;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.List;
+
 import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
+import pt.tecnico.bftb.library.ManipulatedPackageException;
 
 public class BFTBClientApp {
 
@@ -41,21 +54,29 @@ public class BFTBClientApp {
         for (int i = 0; i < args.length; i++) {
             System.out.printf("arg[%d] = %s%n", i, args[i]);
         }
-        final String role = "Client";
         final String host = args[0];
         final int port = Integer.parseInt(args[1]);
         String publicKeyString = null;
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
-
+        String name = System.console().readLine(Label.CLIENT_NAME);
+        char[] charName = name.toCharArray();
+        int lastNameIndex = name.length() - 1;
         try {
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA"); // Should we use DSA?
-            SecureRandom random = SecureRandom.getInstance("SHA1PRNG"); // Change to SHA2/3
-            keyGen.initialize(1024, random); // Should we use a bigger Keysize?
-            KeyPair pair = keyGen.generateKeyPair();
 
-            privateKey = pair.getPrivate();
-            publicKey = pair.getPublic();
+            String originPath = System.getProperty("user.dir");
+            Path path = Paths.get(originPath);
 
+            KeyStore ks = KeyStore.getInstance("JKS");
+            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/GlobalKeyStore.jks")),
+                    "keystore".toCharArray());
+            Certificate cert = ks.getCertificate(name);
+
+            publicKey = cert.getPublicKey();
+
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry(name,
+                    new KeyStore.PasswordProtection(("keystore").toCharArray()));
+
+            privateKey = priv.getPrivateKey();
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
         } catch (Exception e) {
@@ -64,12 +85,20 @@ public class BFTBClientApp {
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
 
-        BFTBFrontend frontend = new BFTBFrontend(host, port);// Frontend server implementation.
+        BFTBFrontend frontend = new BFTBFrontend(host, port, privateKey, publicKey);// Frontend server implementation.
 
         /*---------------------------------- Registration into the server ----------------------------------*/
-        OpenAccountResponse response = frontend.openAccount(encodedPublicKey);
-        publicKeyString = response.getPublicKey();
-        System.out.println(response.getResponse());
+        OpenAccountResponse response = null;
+
+        try {
+            response = frontend.openAccount(encodedPublicKey);
+            publicKeyString = response.getPublicKey();
+            System.out.println(response.getResponse());
+        }
+        catch (ManipulatedPackageException mpe) {
+            System.out.println(mpe.getMessage());
+        }
+
         /*---------------------------------- Registration into the server ----------------------------------*/
         System.out.println(Label.TYPE_HELP);
         while (true) {
@@ -80,7 +109,17 @@ public class BFTBClientApp {
                 switch (splittedCommand[0]) {
                     case "open_account":
                         // Argument public key is predefined since each user only has one account.
-                        System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
+
+                        response = null;
+
+                        try {
+                            response = frontend.openAccount(encodedPublicKey);
+                            System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
+                        }
+                        catch (ManipulatedPackageException mpe) {
+                            System.out.println(mpe.getMessage());
+                        }
+
                         break;
 
                     case "send_amount":
@@ -88,8 +127,9 @@ public class BFTBClientApp {
                             System.out.println(Label.INVALID_ARGS_SND_AMT);
                             continue;
                         }
-                        System.out.println(frontend.sendAmount(publicKeyString, splittedCommand[1]
-                                , Integer.parseInt(splittedCommand[2])).getResponse());
+                        System.out.println(frontend
+                                .sendAmount(publicKeyString, splittedCommand[1], Integer.parseInt(splittedCommand[2]))
+                                .getResponse());
                         break;
 
                     case "check_account":
@@ -111,12 +151,12 @@ public class BFTBClientApp {
                             continue;
                         }
                         String answer = splittedCommand[3];
-                        if (answer.equals("yes") || answer.equals("Yes") || answer.equals("no") || answer.equals("No")){
+                        if (answer.equals("yes") || answer.equals("Yes") || answer.equals("no")
+                                || answer.equals("No")) {
                             boolean accept = splittedCommand[3].equals("yes") || splittedCommand[3].equals("Yes");
-                            System.out.println(frontend.receiveAmount(publicKeyString,splittedCommand[1]
-                                    ,Integer.parseInt(splittedCommand[2]),accept).getResult());
-                        }
-                        else{
+                            System.out.println(frontend.receiveAmount(publicKeyString, splittedCommand[1],
+                                    Integer.parseInt(splittedCommand[2]), accept).getResult());
+                        } else {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT_ANSWER);
                         }
                         break;
@@ -161,8 +201,7 @@ public class BFTBClientApp {
 
             } catch (StatusRuntimeException e) {// This is where the exceptions from grpc are caught.
                 System.out.println(e.getMessage());
-            }
-            catch (NumberFormatException nfe) {
+            } catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
             }
 
