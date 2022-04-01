@@ -26,6 +26,7 @@ import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
 import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
 import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountRequest;
+import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
@@ -158,10 +159,46 @@ public class BFTBLibraryApp {
         return AuditRequest.newBuilder().setKey(publicKey).build();
     }
 
-    public ReceiveAmountRequest receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
-            boolean accept) {
-        return ReceiveAmountRequest.newBuilder().setReceiverKey(receiverPublicKey).setSenderKey(senderPublicKey)
-                .setTransactionId(transactionId).setAnswer(accept).build();
+    public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
+                                         boolean accept, int nonce) {
+        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setReceiveAmountRequest(
+                ReceiveAmountRequest.newBuilder().setReceiverKey(receiverPublicKey)
+                        .setSenderKey(senderPublicKey).setTransactionId(transactionId).setAnswer(accept).build()).setNonce(nonce).build();
+        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage)
+                .setSenderKey(ByteString.copyFrom(receiverPublicKey.getBytes())).build();
+
+        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+
+        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(digitalsign(
+                hash(sequencemessagetoencrypt), _userPrivateKey))).setUnencriptedhash(unencriptedhash).build();
+
+    }
+
+    public ReceiveAmountResponse receiveAmountResponse(EncryptedStruck response) throws ManipulatedPackageException {
+        byte[] calculatedHash = hash(BaseEncoding.base64()
+                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+        PublicKey publicKey = null;
+
+        try {
+            publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec
+                    (response.getUnencriptedhash().getSenderKey().toByteArray()));
+        }
+        catch (Exception e) {
+            System.out.println(e);
+        }
+
+        byte[] decriptedHash = decrypt(response.getEncryptedhash().toByteArray(),publicKey);
+
+        ReceiveAmountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getReceiveAmountResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+        return ReceiveAmountResponse.newBuilder().setResult(accResponse.getResult()).build();
     }
 
     public SearchKeysRequest searchKeys() {

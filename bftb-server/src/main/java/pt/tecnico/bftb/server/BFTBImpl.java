@@ -103,7 +103,17 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
     @Override
     public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver) {
-        NonceResponse response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getSenderKey())).build();
+
+        NonceResponse response = null;
+        System.out.println(request.getSenderKey().toString(StandardCharsets.UTF_8));
+
+        if (request.getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
+            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getSenderKey()
+                    .toString(StandardCharsets.UTF_8)).getPublicKey())).build();
+        }
+        else{
+            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getSenderKey())).build();
+        }
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
@@ -297,7 +307,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     }
 
     @Override
-    public void receiveAmount(ReceiveAmountRequest request, StreamObserver<ReceiveAmountResponse> responseObserver) {
+    public void receiveAmount(EncryptedStruck request, StreamObserver<ReceiveAmountResponse> responseObserver) {
         String receiverKey = request.getReceiverKey();
         String senderKey = request.getSenderKey();
         int transactionId = request.getTransactionId();

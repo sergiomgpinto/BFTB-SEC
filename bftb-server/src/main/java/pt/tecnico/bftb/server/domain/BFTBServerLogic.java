@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import static io.grpc.Status.UNKNOWN;
+
 public class BFTBServerLogic {
 
     private BFTBMySqlDriver mySqlDriver = new BFTBMySqlDriver();
@@ -33,7 +35,20 @@ public class BFTBServerLogic {
             // Should never happen.
         }
         nonces.put(pubKey, nonce);
-        System.out.println(pubKey);
+        return nonce;
+    }
+
+    public synchronized int newNonce(PublicKey publicKey) {
+        int nonce = randomGenerator.nextInt();
+        PublicKey pubKey = null;
+
+        try {
+            pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.getEncoded()));
+        }
+        catch (Exception e) {
+            // Should never happen.
+        }
+        nonces.put(pubKey, nonce);
         return nonce;
     }
 
@@ -41,8 +56,8 @@ public class BFTBServerLogic {
         recoverBFTBServerState();
     }
 
-    public synchronized String openAccount(ByteString key)
-            throws InvalidKeySpecException, NoSuchAlgorithmException, BFTBDatabaseException {
+    public synchronized String openAccount(ByteString key) throws InvalidKeySpecException, NoSuchAlgorithmException
+            ,BFTBDatabaseException {
         PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
 
         // This function is restricting one account per user.
@@ -59,7 +74,7 @@ public class BFTBServerLogic {
 
         String[] args = { String.valueOf(account.getBalance()), publicKeyString };
 
-        String ret = mySqlDriver.dbParser("openAccount", args);
+        String ret = mySqlDriver.dbParser("openAccount",args,publicKey);
 
         if (ret.equals(Label.SUCCESS)) {
             return Label.SUCC_ACC_CRT + ":" + publicKeyString;
@@ -96,7 +111,7 @@ public class BFTBServerLogic {
                 senderAccount.getPublicKeyString(), receiverAccount.getPublicKeyString(),
                 String.valueOf(transactionId) };
 
-        String ret = mySqlDriver.dbParser("sendAmount", args);
+        String ret = mySqlDriver.dbParser("sendAmount",args,null);
 
         if (ret.equals(Label.SUCCESS)) {
             return Label.WAIT_ACC;
@@ -223,7 +238,7 @@ public class BFTBServerLogic {
                     receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
                     String.valueOf(pendingTransaction.getTransactionId()) };
 
-            String ret = mySqlDriver.dbParser("receiveAmount", args);
+            String ret = mySqlDriver.dbParser("receiveAmount",args,null);
 
             if (ret.equals(Label.SUCCESS)) {
                 return Label.SUCCESS_TRANSACTION_REJECTED;
@@ -263,7 +278,7 @@ public class BFTBServerLogic {
                     String.valueOf(pendingTransaction.getTransactionId()),
                     String.valueOf(pendingTransaction.getAmount()), TransactionType.CREDIT.toString() };
 
-            String ret = mySqlDriver.dbParser("receiveAmount", args);
+            String ret = mySqlDriver.dbParser("receiveAmount",args,null);
 
             if (ret.equals(Label.SUCCESS)) {
                 return Label.SUCCESS_TRANSACTION;
@@ -307,9 +322,19 @@ public class BFTBServerLogic {
             while (set.next()) {
                 int balance = set.getInt("Balance");
                 String publicKeyString = set.getString("PublicKeyString");
+                Blob blobData = set.getBlob("PublicKey");
+                int blobLength = (int) blobData.length();
 
-                Account account = new Account(balance,publicKeyString,);
-                _accounts.add(account);
+                try {
+                    PublicKey publicKey = KeyFactory.getInstance("RSA")
+                            .generatePublic(new X509EncodedKeySpec(blobData.getBytes(1, blobLength)));
+                    Account account = new Account(balance, publicKeyString, publicKey);
+                    _accounts.add(account);
+                }
+                catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+                    System.out.println(e.getMessage());
+                }
+
             }
             _number_of_accounts = _accounts.size();
 

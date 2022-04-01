@@ -26,7 +26,7 @@ public interface Label {
 
   String INVALIDCOMMAND = "Invalid command. Please use the command \"help\" for more information.";
 
-  String DOWNSERVER = "Server's down.";
+  String SERVER_DOWN = "Server's down.";
 
   String CLIENT_NAME = "Name of the user who owns the account: ";
 

@@ -154,8 +154,13 @@ public class BFTBClientApp {
                         if (answer.equals("yes") || answer.equals("Yes") || answer.equals("no")
                                 || answer.equals("No")) {
                             boolean accept = splittedCommand[3].equals("yes") || splittedCommand[3].equals("Yes");
-                            System.out.println(frontend.receiveAmount(publicKeyString, splittedCommand[1],
-                                    Integer.parseInt(splittedCommand[2]), accept).getResult());
+                            try {
+                                System.out.println(frontend.receiveAmount(publicKeyString, splittedCommand[1],
+                                        Integer.parseInt(splittedCommand[2]), accept).getResult());
+                            }
+                            catch (ManipulatedPackageException mpe) {
+                                System.out.println(mpe.getMessage());
+                            }
                         } else {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT_ANSWER);
                         }

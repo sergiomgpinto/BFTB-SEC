@@ -64,9 +64,11 @@ public class BFTBFrontend {
     }
 
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
-            boolean accept) {
+            boolean accept) throws ManipulatedPackageException{
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-        return stub.receiveAmount(_library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept));
+        NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(receiverPublicKey.getBytes())));
+        return _library.receiveAmountResponse(stub.receiveAmount(_library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId,
+                accept, nonce.getNonce())));
     }
 
     public SearchKeysResponse searchKeys() {
