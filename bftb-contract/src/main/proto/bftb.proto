@@ -105,10 +105,10 @@ message NonceResponse{
 service BFTB{
   rpc getNonce (NonceRequest) returns (NonceResponse);
   rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
-  rpc sendAmount(SendAmountRequest) returns (SendAmountResponse);
-  rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);
+  rpc sendAmount(EncryptedStruck) returns (EncryptedStruck);
+  rpc checkAccount(CheckAccountRequest) returns (CheckAccountResponse);
   rpc audit(AuditRequest) returns (AuditResponse);
-  rpc receiveAmount(ReceiveAmountRequest) returns (ReceiveAmountResponse);
+  rpc receiveAmount(EncryptedStruck) returns (EncryptedStruck);
   rpc searchKeys(SearchKeysRequest) returns (SearchKeysResponse);
 }
 

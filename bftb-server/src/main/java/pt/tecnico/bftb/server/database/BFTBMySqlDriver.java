@@ -4,6 +4,7 @@ import pt.tecnico.bftb.server.domain.Label;
 import pt.tecnico.bftb.server.domain.TransactionStatus;
 import pt.tecnico.bftb.server.domain.TransactionType;
 
+import java.security.PublicKey;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.*;
@@ -12,7 +13,7 @@ import java.util.List;
 
 public class BFTBMySqlDriver {
 
-    public String dbParser(String function, String[] args) {
+    public String dbParser(String function, String[] args, PublicKey publicKey) {
 
         try {
 
@@ -30,11 +31,17 @@ public class BFTBMySqlDriver {
             switch (function) {
 
                 case "openAccount":
-                    sql = "INSERT INTO Account(Balance, PublicKeyString) VALUES (?,?)";
+                    sql = "INSERT INTO Account(Balance, PublicKeyString, PublicKey) VALUES (?,?,?)";
                     stmt = con.prepareStatement(sql);
                     stmt.setString(1, args[0]);
                     stmt.setString(2, args[1]);
+
+                    byte[] bytePublicKey = publicKey.getEncoded();
+                    Blob blobData = con.createBlob();
+                    blobData.setBytes(1,bytePublicKey);
+                    stmt.setBlob(3,blobData);
                     stmt.executeUpdate();
+                    blobData.free();
                     return Label.SUCCESS;
 
                 case "sendAmount":

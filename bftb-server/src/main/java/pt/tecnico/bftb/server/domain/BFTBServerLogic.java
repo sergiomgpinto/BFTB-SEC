@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import static io.grpc.Status.UNKNOWN;
+
 public class BFTBServerLogic {
 
     private BFTBMySqlDriver mySqlDriver = new BFTBMySqlDriver();
@@ -23,19 +25,30 @@ public class BFTBServerLogic {
     private int _number_of_accounts = 0;
     private final static SecureRandom randomGenerator = new SecureRandom();
 
-
     public synchronized int newNonce(ByteString publicKey) {
         int nonce = randomGenerator.nextInt();
         PublicKey pubKey = null;
 
         try {
             pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.toByteArray()));
+        } catch (Exception e) {
+            // Should never happen.
+        }
+        nonces.put(pubKey, nonce);
+        return nonce;
+    }
+
+    public synchronized int newNonce(PublicKey publicKey) {
+        int nonce = randomGenerator.nextInt();
+        PublicKey pubKey = null;
+
+        try {
+            pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.getEncoded()));
         }
         catch (Exception e) {
             // Should never happen.
         }
         nonces.put(pubKey, nonce);
-        System.out.println(pubKey);
         return nonce;
     }
 
@@ -59,14 +72,13 @@ public class BFTBServerLogic {
         _accounts.add(account);
         String publicKeyString = account.getPublicKeyString();
 
-        String[] args = {String.valueOf(account.getBalance()),publicKeyString};
+        String[] args = { String.valueOf(account.getBalance()), publicKeyString };
 
-        String ret = mySqlDriver.dbParser("openAccount",args);
+        String ret = mySqlDriver.dbParser("openAccount",args,publicKey);
 
         if (ret.equals(Label.SUCCESS)) {
             return Label.SUCC_ACC_CRT + ":" + publicKeyString;
-        }
-        else {
+        } else {
             throw new BFTBDatabaseException(ret);
         }
 
@@ -87,29 +99,29 @@ public class BFTBServerLogic {
         int initialBalance = senderAccount.getBalance();
         boolean doesAccHaveSuffFunds = senderAccount.subtractBalance(amount);
 
-        if (!doesAccHaveSuffFunds){
+        if (!doesAccHaveSuffFunds) {
             return Label.NOT_ENOUGH_BALANCE;
         }
         int transactionId = receiverAccount.getIncomingPending().size() + 1;
         receiverAccount.addPending(senderKey, amount, false, transactionId);
-        senderAccount.addPending(receiverKey, amount, true,transactionId);
+        senderAccount.addPending(receiverKey, amount, true, transactionId);
 
-        String[] args = {String.valueOf(senderAccount.getBalance()),String.valueOf(initialBalance),
-                senderAccount.getPublicKeyString(),String.valueOf(amount),TransactionStatus.PENDING.toString()
-                ,senderAccount.getPublicKeyString(),receiverAccount.getPublicKeyString()
-                ,String.valueOf(transactionId)};
+        String[] args = { String.valueOf(senderAccount.getBalance()), String.valueOf(initialBalance),
+                senderAccount.getPublicKeyString(), String.valueOf(amount), TransactionStatus.PENDING.toString(),
+                senderAccount.getPublicKeyString(), receiverAccount.getPublicKeyString(),
+                String.valueOf(transactionId) };
 
-        String ret = mySqlDriver.dbParser("sendAmount",args);
+        String ret = mySqlDriver.dbParser("sendAmount",args,null);
 
         if (ret.equals(Label.SUCCESS)) {
             return Label.WAIT_ACC;
-        }
-        else {
+        } else {
             throw new BFTBDatabaseException(ret);
         }
     }
 
-    public synchronized List<String> audit(String key) throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount {
+    public synchronized List<String> audit(String key)
+            throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount {
 
         List<String> set = new ArrayList<>();
         boolean ACCOUNT_FOUND = false;
@@ -117,7 +129,7 @@ public class BFTBServerLogic {
         for (Account account : _accounts) {
             String publicKey = account.getPublicKeyString();
             if (key.equals(publicKey)) {
-                //Account found.
+                // Account found.
                 ACCOUNT_FOUND = true;
                 List<Transaction> transactions = account.getTransactions();
 
@@ -126,11 +138,12 @@ public class BFTBServerLogic {
                 }
             }
         }
-        if (!ACCOUNT_FOUND){
+        if (!ACCOUNT_FOUND) {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
         return set;
     }
+
     public synchronized List<String> checkAccount(String key)
             throws NonExistentAccount {
 
@@ -145,12 +158,12 @@ public class BFTBServerLogic {
                 ret.add(String.valueOf(account.getBalance()));
             }
         }
-        //Account not found.
-        if (!ACCOUNT_FOUND){
+        // Account not found.
+        if (!ACCOUNT_FOUND) {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
-        //Returns list of pending incoming transfers
-        for (Pending pendingTransaction: owner_account.getPending()) {
+        // Returns list of pending incoming transfers
+        for (Pending pendingTransaction : owner_account.getPending()) {
             if (pendingTransaction.getType() == TransactionType.CREDIT) {
                 ret.add(pendingTransaction.toString(owner_account.getPublicKeyString()));
             }
@@ -180,9 +193,9 @@ public class BFTBServerLogic {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
 
-        Pending pendingTransaction = senderAccount.getPendingTransaction(receiverKey,transactionId);
+        Pending pendingTransaction = senderAccount.getPendingTransaction(receiverKey, transactionId);
 
-        if (pendingTransaction == null){
+        if (pendingTransaction == null) {
             throw new NonExistentTransaction(Label.NON_EXISTENT_TRANSACTION);
         }
 
@@ -191,21 +204,21 @@ public class BFTBServerLogic {
             String transactionSenderKey = pendingTransaction.getSenderKey();
             String transactionReceiverKey = senderAccount.getPublicKeyString();
 
-            if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)){
+            if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)) {
                 throw new NoAuthorization(Label.NO_AUTHORIZATION);
             }
         }
 
         int amount = pendingTransaction.getAmount();// Amount is the same for both pending transactions registered
-        //for sender and receiver.
+        // for sender and receiver.
 
         if (!answer) { // User rejects transaction.
-            senderAccount.removePendingTransaction(receiverKey,transactionId);
+            senderAccount.removePendingTransaction(receiverKey, transactionId);
             int initialAmount = senderAccount.getBalance();
             senderAccount.addBalance(amount);
 
-            pendingTransaction = receiverAccount.getPendingTransaction(senderKey,transactionId);
-            if (pendingTransaction == null){
+            pendingTransaction = receiverAccount.getPendingTransaction(senderKey, transactionId);
+            if (pendingTransaction == null) {
                 throw new NonExistentTransaction(Label.NON_EXISTENT_TRANSACTION);
             }
 
@@ -213,35 +226,33 @@ public class BFTBServerLogic {
                 String transactionSenderKey = pendingTransaction.getSenderKey();
                 String transactionReceiverKey = receiverAccount.getPublicKeyString();
 
-                if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)){
+                if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)) {
                     throw new NoAuthorization(Label.NO_AUTHORIZATION);
                 }
             }
 
-            receiverAccount.removePendingTransaction(senderKey,transactionId);
+            receiverAccount.removePendingTransaction(senderKey, transactionId);
             String answerString = "false";
-            String[] args = {answerString,String.valueOf(initialAmount + amount)
-                    ,String.valueOf(initialAmount),senderAccount.getPublicKeyString(),
-            receiverAccount.getPublicKeyString(),senderAccount.getPublicKeyString(),
-            String.valueOf(pendingTransaction.getTransactionId())};
+            String[] args = { answerString, String.valueOf(initialAmount + amount), String.valueOf(initialAmount),
+                    senderAccount.getPublicKeyString(),
+                    receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
+                    String.valueOf(pendingTransaction.getTransactionId()) };
 
-            String ret = mySqlDriver.dbParser("receiveAmount",args);
+            String ret = mySqlDriver.dbParser("receiveAmount",args,null);
 
             if (ret.equals(Label.SUCCESS)) {
                 return Label.SUCCESS_TRANSACTION_REJECTED;
-            }
-            else {
+            } else {
                 throw new BFTBDatabaseException(ret);
             }
 
-        }
-        else { // User accepts transaction.
+        } else { // User accepts transaction.
             TransactionType type = pendingTransaction.getType();
-            senderAccount.removePendingTransaction(receiverKey,transactionId);
+            senderAccount.removePendingTransaction(receiverKey, transactionId);
             senderAccount.addTransaction(receiverKey, amount, type);
 
-            pendingTransaction = receiverAccount.getPendingTransaction(senderKey,transactionId);
-            if (pendingTransaction == null){
+            pendingTransaction = receiverAccount.getPendingTransaction(senderKey, transactionId);
+            if (pendingTransaction == null) {
                 throw new NonExistentTransaction(Label.NON_EXISTENT_TRANSACTION);
             }
 
@@ -249,30 +260,29 @@ public class BFTBServerLogic {
                 String transactionSenderKey = pendingTransaction.getSenderKey();
                 String transactionReceiverKey = receiverAccount.getPublicKeyString();
 
-                if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)){
+                if (!senderKey.equals(transactionSenderKey) || !receiverKey.equals(transactionReceiverKey)) {
                     throw new NoAuthorization(Label.NO_AUTHORIZATION);
                 }
             }
 
             amount = pendingTransaction.getAmount();
             type = pendingTransaction.getType();
-            receiverAccount.removePendingTransaction(senderKey,transactionId);
+            receiverAccount.removePendingTransaction(senderKey, transactionId);
             int initialAmount = receiverAccount.getBalance();
             receiverAccount.addTransaction(senderKey, amount, type);
 
             String answerString = "true";
-            String[] args = {answerString,String.valueOf(receiverAccount.getBalance())
-                    ,String.valueOf(initialAmount),receiverAccount.getPublicKeyString(),
-                    receiverAccount.getPublicKeyString(),senderAccount.getPublicKeyString(),
+            String[] args = { answerString, String.valueOf(receiverAccount.getBalance()), String.valueOf(initialAmount),
+                    receiverAccount.getPublicKeyString(),
+                    receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
                     String.valueOf(pendingTransaction.getTransactionId()),
-                            String.valueOf(pendingTransaction.getAmount()),TransactionType.CREDIT.toString()};
+                    String.valueOf(pendingTransaction.getAmount()), TransactionType.CREDIT.toString() };
 
-            String ret = mySqlDriver.dbParser("receiveAmount",args);
+            String ret = mySqlDriver.dbParser("receiveAmount",args,null);
 
             if (ret.equals(Label.SUCCESS)) {
                 return Label.SUCCESS_TRANSACTION;
-            }
-            else {
+            } else {
                 throw new BFTBDatabaseException(ret);
             }
 
@@ -312,9 +322,19 @@ public class BFTBServerLogic {
             while (set.next()) {
                 int balance = set.getInt("Balance");
                 String publicKeyString = set.getString("PublicKeyString");
+                Blob blobData = set.getBlob("PublicKey");
+                int blobLength = (int) blobData.length();
 
-                Account account = new Account(balance,publicKeyString);
-                _accounts.add(account);
+                try {
+                    PublicKey publicKey = KeyFactory.getInstance("RSA")
+                            .generatePublic(new X509EncodedKeySpec(blobData.getBytes(1, blobLength)));
+                    Account account = new Account(balance, publicKeyString, publicKey);
+                    _accounts.add(account);
+                }
+                catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
+                    System.out.println(e.getMessage());
+                }
+
             }
             _number_of_accounts = _accounts.size();
 
