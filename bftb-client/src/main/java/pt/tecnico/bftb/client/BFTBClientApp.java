@@ -32,6 +32,20 @@ public class BFTBClientApp {
     public static void main(String[] args) {
         System.out.println(BFTBClientApp.class.getSimpleName());
 
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try{
+                    Thread.sleep(200);
+                    System.out.println("\nA fatal error occurred in the client.");
+                    System.out.println("Closing...");
+                }
+                catch(InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
         // receive and print arguments from POM
         System.out.printf("Received %d arguments%n", args.length);
         for (int i = 0; i < args.length; i++) {

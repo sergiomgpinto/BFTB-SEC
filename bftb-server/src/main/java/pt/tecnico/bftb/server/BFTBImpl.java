@@ -26,9 +26,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.netty.shaded.io.netty.handler.codec.base64.Base64;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.bftb.server.domain.Label;
-import pt.tecnico.bftb.server.domain.NoAccountException;
-import pt.tecnico.bftb.server.domain.exception.NoAuthorization;
-import pt.tecnico.bftb.server.domain.exception.NonExistentAccount;
+import pt.tecnico.bftb.server.domain.exception.*;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
@@ -45,7 +43,6 @@ import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
 import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
-import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -110,7 +107,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             e.printStackTrace();
         }
 
-        return decryptedMessageHash; 
+        return decryptedMessageHash;
     }
 
     private byte[] hash(String inputdata){
@@ -170,8 +167,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             else{
                 response = EncryptedStruck.newBuilder().setEncryptedhash().setUnencriptedhash().build();
             }
-
-
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
@@ -193,15 +188,19 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (senderKey == null || senderKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
         }
         if (receiverKey == null || receiverKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
         }
         if (senderKey.equals(receiverKey)) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
+            return;
         }
         if (amount <= 0){
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_AMOUNT).asRuntimeException());
+            return;
         }
 
         try {
@@ -214,6 +213,10 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         } catch (NoAccountException nae) {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
         }
+        catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
+        }
+
     }
 
     @Override
@@ -253,15 +256,19 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (receiverKey == null || receiverKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
         }
         if (senderKey == null || senderKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
         }
         if (senderKey.equals(receiverKey)) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_ARGS_SEND_AMOUNT).asRuntimeException());
+            return;
         }
         if (transactionId <= 0) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_TRANSACTION_ID).asRuntimeException());
+            return;
         }
 
         try{
@@ -279,6 +286,9 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         catch (NoAuthorization na) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
         }
+        catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
+        }
 
     }
 
@@ -288,16 +298,17 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (key == null || key.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
         }
 
         try {
             AuditResponse response = AuditResponse.newBuilder().addAllSet(_bftb.audit(key)).build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
-        } catch (NonExistentAccount nea) {
+        }
+        catch (NonExistentAccount nea) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(nea.getMessage()).asRuntimeException());
         }
-
         catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
         }

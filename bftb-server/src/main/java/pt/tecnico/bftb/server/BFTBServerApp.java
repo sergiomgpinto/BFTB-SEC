@@ -42,6 +42,21 @@ public class BFTBServerApp {
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try{
+                    Thread.sleep(200);
+                    System.out.println("\nA fatal error occurred in the server.");
+                    System.out.println("Closing...");
+                }
+                catch(InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+
+
         System.out.println("Byzantine Fault Tolerant Banking server");
 
         // receive and print arguments

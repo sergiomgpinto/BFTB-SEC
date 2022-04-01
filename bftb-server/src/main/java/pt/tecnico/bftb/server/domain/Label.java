@@ -19,4 +19,7 @@ public interface Label {
     String NOT_ENOUGH_BALANCE = "Account has no sufficient funds to execute transaction.";
     String NO_AUTHORIZATION = "This account has no authorization to accept or reject this transaction.";
     String ERROR_DECRYPT = "Either the message was tempered, duplicated or the public key given is invalid";
+    String SUCCESS = "SUCCESS";
+    String ERROR_TRANSACTION_TIMEOUT = "Database timeout expired for transaction.";
+    String ERROR_TRANSACTION = "An unexpected error occurred in the database.";
 }
