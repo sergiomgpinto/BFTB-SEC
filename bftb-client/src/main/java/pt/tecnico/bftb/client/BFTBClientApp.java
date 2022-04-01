@@ -38,12 +38,11 @@ public class BFTBClientApp {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                try{
+                try {
                     Thread.sleep(200);
                     System.out.println("\nA fatal error occurred in the client.");
                     System.out.println("Closing...");
-                }
-                catch(InterruptedException ie) {
+                } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
             }
@@ -59,8 +58,6 @@ public class BFTBClientApp {
         String publicKeyString = null;
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
         String name = System.console().readLine(Label.CLIENT_NAME);
-        char[] charName = name.toCharArray();
-        int lastNameIndex = name.length() - 1;
         try {
 
             String originPath = System.getProperty("user.dir");
@@ -94,8 +91,7 @@ public class BFTBClientApp {
             response = frontend.openAccount(encodedPublicKey);
             publicKeyString = response.getPublicKey();
             System.out.println(response.getResponse());
-        }
-        catch (ManipulatedPackageException mpe) {
+        } catch (ManipulatedPackageException mpe) {
             System.out.println(mpe.getMessage());
         }
 
@@ -113,10 +109,8 @@ public class BFTBClientApp {
                         response = null;
 
                         try {
-                            response = frontend.openAccount(encodedPublicKey);
                             System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
-                        }
-                        catch (ManipulatedPackageException mpe) {
+                        } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
                         }
 
@@ -127,9 +121,15 @@ public class BFTBClientApp {
                             System.out.println(Label.INVALID_ARGS_SND_AMT);
                             continue;
                         }
-                        System.out.println(frontend
-                                .sendAmount(publicKeyString, splittedCommand[1], Integer.parseInt(splittedCommand[2]))
-                                .getResponse());
+
+                        try {
+                            System.out.println(frontend
+                                    .sendAmount(publicKeyString, splittedCommand[1],
+                                            Integer.parseInt(splittedCommand[2]))
+                                    .getResponse());
+                        } catch (ManipulatedPackageException mpe) {
+                            System.out.println(mpe.getMessage());
+                        }
                         break;
 
                     case "check_account":
