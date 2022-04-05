@@ -58,22 +58,28 @@ public class BFTBClientApp {
         String publicKeyString = null;
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
         String name = System.console().readLine(Label.CLIENT_NAME);
+        char lastChar = name.charAt(name.length() - 1);
         try {
 
             String originPath = System.getProperty("user.dir");
             Path path = Paths.get(originPath);
 
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load((new FileInputStream(path.getParent() + "/certificates/keys/GlobalKeyStore.jks")),
-                    "keystore".toCharArray());
+            ks.load((new FileInputStream(
+                    path.getParent() + "/certificates/user" + lastChar + "keystore.jks")),
+                    ("keystoreuser" + lastChar).toCharArray());
             Certificate cert = ks.getCertificate(name);
 
             publicKey = cert.getPublicKey();
 
             PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry(name,
-                    new KeyStore.PasswordProtection(("keystore").toCharArray()));
+                    new KeyStore.PasswordProtection(("keystoreuser" + lastChar).toCharArray()));
 
             privateKey = priv.getPrivateKey();
+
+            System.out.println(privateKey);
+            System.out.println(publicKey);
+
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
         } catch (Exception e) {
@@ -144,9 +150,9 @@ public class BFTBClientApp {
                             for (String pendingTransaction : check_account_response.getPendingList()) {
                                 System.out.println(pendingTransaction);
                             }
-                        } catch (ManipulatedPackageException mpe) { 
+                        } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
-                 
+
                         }
 
                         break;
@@ -163,8 +169,7 @@ public class BFTBClientApp {
                             try {
                                 System.out.println(frontend.receiveAmount(publicKeyString, splittedCommand[1],
                                         Integer.parseInt(splittedCommand[2]), accept).getResult());
-                            }
-                            catch (ManipulatedPackageException mpe) {
+                            } catch (ManipulatedPackageException mpe) {
                                 System.out.println(mpe.getMessage());
                             }
                         } else {

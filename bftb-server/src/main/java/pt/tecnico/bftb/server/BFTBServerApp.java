@@ -45,17 +45,15 @@ public class BFTBServerApp {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                try{
+                try {
                     Thread.sleep(200);
                     System.out.println("\nA fatal error occurred in the server.");
                     System.out.println("Closing...");
-                }
-                catch(InterruptedException ie) {
+                } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
             }
         });
-
 
         System.out.println("Byzantine Fault Tolerant Banking server");
 
@@ -77,15 +75,15 @@ public class BFTBServerApp {
             Path path = Paths.get(originPath);
 
             KeyStore ks = KeyStore.getInstance("JKS");
-            ks.load(new FileInputStream(path.getParent() + "/certificates/keys/GlobalKeyStore.jks"),
-                    "keystore".toCharArray());
+            ks.load(new FileInputStream(path.getParent() + "/certificates/server1keystore.jks"),
+                    "keystoreserver1".toCharArray());
 
-            Certificate cert = ks.getCertificate("server");
+            Certificate cert = ks.getCertificate("server1");
 
             serverPublicKey = cert.getPublicKey();
 
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("server",
-                    new KeyStore.PasswordProtection(("keystore").toCharArray()));
+            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry("server1",
+                    new KeyStore.PasswordProtection(("keystoreserver1").toCharArray()));
 
             serverPrivateKey = priv.getPrivateKey();
 
@@ -94,7 +92,7 @@ public class BFTBServerApp {
         }
 
         // Implementation of server.
-        final BindableService impl = new BFTBImpl(serverPrivateKey,serverPublicKey);
+        final BindableService impl = new BFTBImpl(serverPrivateKey, serverPublicKey);
         Server server = ServerBuilder.forPort(port).addService(impl).build();
 
         server.start();
