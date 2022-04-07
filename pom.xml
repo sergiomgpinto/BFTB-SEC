@@ -38,6 +38,7 @@
         <module>bftb-server</module>
         <module>bftb-client</module>
         <module>bftb-library</module>
+        <module>bftb-cripto</module>
     </modules>
 
     <dependencies>
