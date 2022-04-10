@@ -39,7 +39,6 @@ public class BFTBFrontend {
     }
 
     public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException {
-        System.out.println("im here in port" + _port);
 
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
         NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));

@@ -253,13 +253,11 @@ public class BFTBClientApp {
 
             } catch (StatusRuntimeException e) {// This is where the exceptions from grpc are caught.
                 try {
-                    System.out.println(mainPath + "/Server" + serverLastChar);
                     zkNaming.unbind(mainPath + "/Server" + serverLastChar, serverInfo);
 
                     zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
 
                     randomServerIndex = ThreadLocalRandom.current().nextInt(0, zkRecordsList.size());
-                    System.out.println(zkRecordsList.size());
 
                     serverInfo = zkRecordsList.get(randomServerIndex).getURI();
                     splittedServerInfo = serverInfo.split(":");
@@ -268,14 +266,14 @@ public class BFTBClientApp {
                     serverLastChar = serverInfo.charAt(serverInfo.length() - 1);
                     frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);
 
-                    System.out.println("Server died. Trying to reconnect to other replica.");
+                    System.out.println("\nServer died.\nConnecting to another replica...");
                     System.out.println(
-                            "Connected to the server running in port number " + serverPort);
+                            "Connected to the server running in port number " + serverPort + "!\n");
 
                 } catch (ZKNamingException e1) {
                     System.out.println("Error while trying to connect to other replica.");
                 } catch (Exception e2) {
-                    e2.getStackTrace();
+                    e2.getStackTrace(); // add a case error
                 }
 
             } catch (NumberFormatException nfe) {
