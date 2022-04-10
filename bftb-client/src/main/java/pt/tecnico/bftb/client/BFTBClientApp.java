@@ -1,30 +1,29 @@
 package pt.tecnico.bftb.client;
 
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.nio.file.Files;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyFactory;
+
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.KeyStore.PrivateKeyEntry;
 import java.security.cert.Certificate;
-import java.security.cert.X509Certificate;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
-import pt.tecnico.bftb.grpc.Bftb;
+import io.grpc.netty.shaded.io.netty.util.internal.ThreadLocalRandom;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
-import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
 import pt.tecnico.bftb.library.ManipulatedPackageException;
+import pt.ulisboa.tecnico.sdis.zk.ZKNaming;
+import pt.ulisboa.tecnico.sdis.zk.ZKNamingException;
+import pt.ulisboa.tecnico.sdis.zk.ZKRecord;
 
 public class BFTBClientApp {
 
@@ -33,6 +32,21 @@ public class BFTBClientApp {
     static ByteString encodedPublicKey;
 
     public static void main(String[] args) {
+
+        final String zooHost = args[0];
+        final String zooPort = args[1];
+        String serverHost = "";
+        int serverPort = 0;
+        ZKNaming zkNaming = null;
+        String serverInfo = "";
+        ArrayList<ZKRecord> zkRecordsList;
+        String[] splittedServerInfo;
+        int randomServerIndex;
+        BFTBFrontend frontend = null;
+        Path path = null;
+        KeyStore ks = null;
+        char serverLastChar = ' ';
+
         System.out.println(BFTBClientApp.class.getSimpleName());
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -53,18 +67,35 @@ public class BFTBClientApp {
         for (int i = 0; i < args.length; i++) {
             System.out.printf("arg[%d] = %s%n", i, args[i]);
         }
-        final String host = args[0];
-        final int port = Integer.parseInt(args[1]);
+
         String publicKeyString = null;
-        /*---------------------------------- Public an Private keys generation ----------------------------------*/
         String name = System.console().readLine(Label.CLIENT_NAME);
         char lastChar = name.charAt(name.length() - 1);
+        String mainPath = "/nodes";
+
+        try {
+            zkNaming = new ZKNaming(zooHost, zooPort);
+            zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
+            randomServerIndex = ThreadLocalRandom.current().nextInt(0, zkRecordsList.size());
+            serverInfo = zkRecordsList.get(randomServerIndex).getURI();
+            splittedServerInfo = serverInfo.split(":");
+            serverHost = splittedServerInfo[0];
+            serverPort = Integer.parseInt(splittedServerInfo[1]);
+            serverLastChar = Integer.toString(serverPort).charAt(Integer.toString(serverPort).length() - 1);
+
+        } catch (ZKNamingException zkne) {
+            System.out.println("An error occurred in a zookeeper service while trying to connect the server");
+            return;
+        }
+
+        /*---------------------------------- Public an Private keys generation ----------------------------------*/
+
         try {
 
             String originPath = System.getProperty("user.dir");
-            Path path = Paths.get(originPath);
+            path = Paths.get(originPath);
 
-            KeyStore ks = KeyStore.getInstance("JKS");
+            ks = KeyStore.getInstance("JKS");
             ks.load((new FileInputStream(
                     path.getParent() + "/certificates/user" + lastChar + "keystore.jks")),
                     ("keystoreuser" + lastChar).toCharArray());
@@ -77,9 +108,6 @@ public class BFTBClientApp {
 
             privateKey = priv.getPrivateKey();
 
-            System.out.println(privateKey);
-            System.out.println(publicKey);
-
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
         } catch (Exception e) {
@@ -88,7 +116,10 @@ public class BFTBClientApp {
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
 
-        BFTBFrontend frontend = new BFTBFrontend(host, port, privateKey, publicKey);// Frontend server implementation.
+        frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);// Frontend server
+                                                                                   // implementation.
+        System.out.println(
+                "I'm user" + lastChar + " and I am connected to the server running in port number " + serverPort);
 
         /*---------------------------------- Registration into the server ----------------------------------*/
         OpenAccountResponse response = null;
@@ -221,7 +252,32 @@ public class BFTBClientApp {
                 }
 
             } catch (StatusRuntimeException e) {// This is where the exceptions from grpc are caught.
-                System.out.println(e.getMessage());
+                try {
+                    System.out.println(mainPath + "/Server" + serverLastChar);
+                    zkNaming.unbind(mainPath + "/Server" + serverLastChar, serverInfo);
+
+                    zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
+
+                    randomServerIndex = ThreadLocalRandom.current().nextInt(0, zkRecordsList.size());
+                    System.out.println(zkRecordsList.size());
+
+                    serverInfo = zkRecordsList.get(randomServerIndex).getURI();
+                    splittedServerInfo = serverInfo.split(":");
+                    serverHost = splittedServerInfo[0];
+                    serverPort = Integer.parseInt(splittedServerInfo[1]);
+                    serverLastChar = serverInfo.charAt(serverInfo.length() - 1);
+                    frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);
+
+                    System.out.println("Server died. Trying to reconnect to other replica.");
+                    System.out.println(
+                            "Connected to the server running in port number " + serverPort);
+
+                } catch (ZKNamingException e1) {
+                    System.out.println("Error while trying to connect to other replica.");
+                } catch (Exception e2) {
+                    e2.getStackTrace();
+                }
+
             } catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
             }

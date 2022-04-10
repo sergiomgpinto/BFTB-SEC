@@ -17,7 +17,9 @@
         <!-- see parent POM for more properties -->
 
         <mainclass>pt.tecnico.bftb.server.BFTBServerApp</mainclass>
-        <server.port>8080</server.port>
+        <zoo.host>localhost</zoo.host>
+		<zoo.port>2181</zoo.port>
+        <server.host>localhost</server.host>
     </properties>
 
     <dependencies>
@@ -27,6 +29,11 @@
             <artifactId>bftb-contract</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
+		<dependency>
+    		<groupId>pt.ulisboa.tecnico.sdis</groupId>
+    		<artifactId>zk-naming</artifactId>
+    		<version>1.0.3</version>
+		</dependency>
     </dependencies>
 
     <build>
@@ -67,7 +74,9 @@
                 <configuration>
                     <mainClass>${mainclass}</mainClass>
                     <arguments>
-                        <argument>${server.port}</argument>
+                        <argument>${zoo.host}</argument>
+                        <argument>${zoo.port}</argument>
+                        <argument>${server.host}</argument>
                     </arguments>
                 </configuration>
             </plugin>
