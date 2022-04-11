@@ -65,16 +65,16 @@ message EncryptedMessage{
 
 //------------------------------------------- encrypted structure --------------------//
 message EncryptedStruck{
-  bytes encryptedhash = 1;
-  Unencriptedhash unencriptedhash = 2;
+  bytes digitalSignature = 1;
+  RawData rawData = 2;
 }
 
-message Unencriptedhash{
-  Sequencemessage sequencemessage = 1;
+message RawData{
+  Data data = 1;
   bytes senderKey = 2;
 }
 
-message Sequencemessage{
+message Data{
   int32 nonce = 1;
   OpenAccountRequest openAccountRequest = 2;
   OpenAccountResponse openAccountResponse = 3;

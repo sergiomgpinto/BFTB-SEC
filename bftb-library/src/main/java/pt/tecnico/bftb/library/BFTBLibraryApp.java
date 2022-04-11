@@ -9,7 +9,7 @@ import java.util.Arrays;
 import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
-import pt.tecnico.bftb.cripto.BFTBCriptoApp;
+import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
@@ -23,8 +23,8 @@ import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
-import pt.tecnico.bftb.grpc.Bftb.Sequencemessage;
-import pt.tecnico.bftb.grpc.Bftb.Unencriptedhash;
+import pt.tecnico.bftb.grpc.Bftb.RawData;
+import pt.tecnico.bftb.grpc.Bftb.Data;;
 
 public class BFTBLibraryApp {
 
@@ -42,36 +42,50 @@ public class BFTBLibraryApp {
         return NonceRequest.newBuilder().setSenderKey(encodedPublicKey).build();
     }
 
-    
-    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce) {
-        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setOpenAccountRequest(
-                OpenAccountRequest.newBuilder().setKey(encodedPublicKey).build()).setNonce(nonce).build();
-        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage)
-                .setSenderKey(encodedPublicKey).build();
 
-        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce) {
+
+        OpenAccountRequest openAccountRequest = OpenAccountRequest.newBuilder()
+                                                        .setKey(encodedPublicKey)
+                                                        .build();
+
+        Data data = Data.newBuilder()
+                        .setOpenAccountRequest(openAccountRequest)
+                        .setNonce(nonce)
+                        .build();
+
+        RawData rawData = RawData.newBuilder()
+                        .setData(data)
+                        .setSenderKey(encodedPublicKey)
+                        .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
 
         return EncryptedStruck.newBuilder()
-                .setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(BFTBCriptoApp.hash(sequencemessagetoencrypt), _userPrivateKey)))
-                .setUnencriptedhash(unencriptedhash).build();
+                .setDigitalSignature(digitalSignature)
+                .setRawData(rawData)
+                .build();
     }
 
     public OpenAccountResponse openAccountResponse(EncryptedStruck response) throws ManipulatedPackageException {
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().getData().toByteArray()).getBytes());
 
         PublicKey publicKey = null;
 
         try {
             publicKey = KeyFactory.getInstance("RSA")
-                    .generatePublic(new X509EncodedKeySpec(response.getUnencriptedhash().getSenderKey().toByteArray()));
+                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getSenderKey().toByteArray()));
         } catch (Exception e) {
             System.out.println(e);
         }
 
-        byte[] decriptedHash = BFTBCriptoApp.decrypt(response.getEncryptedhash().toByteArray(), publicKey);
+        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
 
-        OpenAccountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getOpenAccountResponse();
+        OpenAccountResponse accResponse = response.getRawData().getData().getOpenAccountResponse();
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
 
@@ -85,36 +99,50 @@ public class BFTBLibraryApp {
 
     public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
             int amount, int nonce) {
-        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setSendAmountRequest(
-                SendAmountRequest.newBuilder().setSenderKey(senderPublicKey).setReceiverKey(receiverPublicKey)
-                        .setAmount(amount).build())
-                .setNonce(nonce).build();
-        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage)
-                .setSenderKey(ByteString.copyFrom(senderPublicKey.getBytes())).build();
 
-        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+        SendAmountRequest sendAmountRequest = SendAmountRequest.newBuilder()
+                                                .setSenderKey(senderPublicKey)
+                                                .setReceiverKey(receiverPublicKey)
+                                                .setAmount(amount)
+                                                .build();
+
+        Data data = Data.newBuilder()
+                        .setSendAmountRequest(sendAmountRequest)
+                        .setNonce(nonce)
+                        .build();
+
+        RawData rawData = RawData.newBuilder()
+                        .setData(data)
+                        .setSenderKey(ByteString.copyFrom(senderPublicKey.getBytes()))
+                        .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
 
         return EncryptedStruck.newBuilder()
-                .setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(BFTBCriptoApp.hash(sequencemessagetoencrypt), _userPrivateKey)))
-                .setUnencriptedhash(unencriptedhash).build();
+                .setDigitalSignature(digitalSignature)
+                .setRawData(rawData)
+                .build();
     }
 
     public SendAmountResponse sendAmountResponse(EncryptedStruck response) throws ManipulatedPackageException {
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().getData().toByteArray()).getBytes());
 
         PublicKey publicKey = null;
 
         try {
             publicKey = KeyFactory.getInstance("RSA")
-                    .generatePublic(new X509EncodedKeySpec(response.getUnencriptedhash().getSenderKey().toByteArray()));
+                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getSenderKey().toByteArray()));
         } catch (Exception e) {
             System.out.println(e);
         }
 
-        byte[] decriptedHash = BFTBCriptoApp.decrypt(response.getEncryptedhash().toByteArray(), publicKey);
+        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
 
-        SendAmountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getSendAmountResponse();
+        SendAmountResponse accResponse = response.getRawData().getData().getSendAmountResponse();
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
 
@@ -128,24 +156,39 @@ public class BFTBLibraryApp {
 
     public EncryptedStruck checkAccount(ByteString bytepublic, int nonce) {
 
-        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setCheckAccountRequest(
-                CheckAccountRequest.newBuilder().setKey(bytepublic).build()).setNonce(nonce).build();
-        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(bytepublic).build();
+        CheckAccountRequest checkAccountRequest = CheckAccountRequest.newBuilder()
+                        .setKey(bytepublic)
+                        .build();
 
-        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+        Data data = Data.newBuilder()
+                        .setCheckAccountRequest(checkAccountRequest)
+                        .setNonce(nonce)
+                        .build();
 
-        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.hash(sequencemessagetoencrypt))).setUnencriptedhash(unencriptedhash).build();
+        RawData rawData = RawData.newBuilder()
+                        .setData(data)
+                        .setSenderKey(bytepublic)
+                        .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
+
+        return EncryptedStruck.newBuilder()
+                                .setDigitalSignature(digitalSignature)
+                                .setRawData(rawData)
+                                .build();
     }
 
     public CheckAccountResponse checkAccountResponse(EncryptedStruck response) throws ManipulatedPackageException{
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().getData().toByteArray()).getBytes());
 
 
-        CheckAccountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getCheckAccountResponse();
+        CheckAccountResponse accResponse = response.getRawData().getData().getCheckAccountResponse();
 
-        boolean isCorrect = Arrays.equals(calculatedHash, response.getEncryptedhash().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigitalSignature().toByteArray());
 
         if (!isCorrect) {
             throw new ManipulatedPackageException("Either package was tempered or a older server response" +
@@ -157,24 +200,37 @@ public class BFTBLibraryApp {
 
     public EncryptedStruck audit(ByteString bytepublic, int nonce) {
 
-        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setAuditRequest(
-                AuditRequest.newBuilder().setKey(bytepublic).build()).setNonce(nonce).build();
-        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(bytepublic).build();
+        AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic).build();
 
-        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+        Data data = Data.newBuilder()
+                        .setAuditRequest(auditRequest)
+                        .setNonce(nonce)
+                        .build();
 
-        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.hash(sequencemessagetoencrypt))).setUnencriptedhash(unencriptedhash).build();
+        RawData rawData = RawData.newBuilder()
+                                .setData(data)
+                                .setSenderKey(bytepublic)
+                                .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
+
+        return EncryptedStruck.newBuilder()
+                                .setDigitalSignature(digitalSignature)
+                                .setRawData(rawData)
+                                .build();
     }
 
     public AuditResponse auditResponse(EncryptedStruck response) throws ManipulatedPackageException{
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().getData().toByteArray()).getBytes());
 
 
-        AuditResponse accResponse = response.getUnencriptedhash().getSequencemessage().getAuditResponse();
+        AuditResponse accResponse = response.getRawData().getData().getAuditResponse();
 
-        boolean isCorrect = Arrays.equals(calculatedHash, response.getEncryptedhash().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigitalSignature().toByteArray());
 
         if (!isCorrect) {
             throw new ManipulatedPackageException("Either package was tempered or a older server response" +
@@ -184,38 +240,53 @@ public class BFTBLibraryApp {
         return AuditResponse.newBuilder().addAllSet(accResponse.getSetList()).build();
     }
 
-    public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
-                                         boolean accept, int nonce) {
-        Sequencemessage sequencemessage = Sequencemessage.newBuilder().setReceiveAmountRequest(
-                ReceiveAmountRequest.newBuilder().setReceiverKey(receiverPublicKey)
-                        .setSenderKey(senderPublicKey).setTransactionId(transactionId).setAnswer(accept).build()).setNonce(nonce).build();
-        Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage)
-                .setSenderKey(ByteString.copyFrom(receiverPublicKey.getBytes())).build();
+    public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept, int nonce) {
 
-        byte[] sequencemessagetoencrypt = BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes();
+        ReceiveAmountRequest receiveAmountRequest = ReceiveAmountRequest.newBuilder()
+                                                        .setReceiverKey(receiverPublicKey)
+                                                        .setSenderKey(senderPublicKey)
+                                                        .setTransactionId(transactionId)
+                                                        .setAnswer(accept)
+                                                        .build();
 
-        return EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(
-                BFTBCriptoApp.hash(sequencemessagetoencrypt), _userPrivateKey))).setUnencriptedhash(unencriptedhash).build();
+        Data data = Data.newBuilder()
+                        .setReceiveAmountRequest(receiveAmountRequest)
+                        .setNonce(nonce)
+                        .build();
+
+        RawData rawData = RawData.newBuilder()
+                        .setData(data)
+                        .setSenderKey(ByteString.copyFrom(receiverPublicKey.getBytes()))
+                        .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+        
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash        (rawDataBytes), _userPrivateKey));
+
+        return EncryptedStruck.newBuilder()
+                                .setDigitalSignature(digitalSignature)
+                                .setRawData(rawData)
+                                .build();
 
     }
 
     public ReceiveAmountResponse receiveAmountResponse(EncryptedStruck response) throws ManipulatedPackageException {
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(response.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().getData().toByteArray()).getBytes());
 
         PublicKey publicKey = null;
 
         try {
             publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec
-                    (response.getUnencriptedhash().getSenderKey().toByteArray()));
+                    (response.getRawData().getSenderKey().toByteArray()));
         }
         catch (Exception e) {
             System.out.println(e);
         }
 
-        byte[] decriptedHash = BFTBCriptoApp.decrypt(response.getEncryptedhash().toByteArray(),publicKey);
+        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(),publicKey);
 
-        ReceiveAmountResponse accResponse = response.getUnencriptedhash().getSequencemessage().getReceiveAmountResponse();
+        ReceiveAmountResponse accResponse = response.getRawData().getData().getReceiveAmountResponse();
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
 
