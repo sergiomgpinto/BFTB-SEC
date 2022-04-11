@@ -20,11 +20,13 @@ import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
-import pt.tecnico.bftb.cripto.BFTBCriptoApp;
+import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
+import pt.tecnico.bftb.grpc.Bftb.Data;
+import pt.tecnico.bftb.grpc.Bftb.RawData;
 import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
 import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
@@ -32,8 +34,6 @@ import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
-import pt.tecnico.bftb.grpc.Bftb.Sequencemessage;
-import pt.tecnico.bftb.grpc.Bftb.Unencriptedhash;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.server.domain.Label;
 import pt.tecnico.bftb.server.domain.exception.BFTBDatabaseException;
@@ -60,8 +60,13 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         NonceResponse response = null;
 
         if (request.getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
-            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getSenderKey()
-                    .toString(StandardCharsets.UTF_8)).getPublicKey())).build();
+            try {
+                response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getSenderKey()
+                        .toString(StandardCharsets.UTF_8)).getPublicKey())).build();
+            } catch (NonExistentAccount e) {
+                responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+                return;
+            }
         } else {
             response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getSenderKey())).build();
         }
@@ -72,13 +77,13 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void openAccount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(request.getRawData().getData().toByteArray()).getBytes());
         PublicKey publicKey = null;
 
         try {
             publicKey = KeyFactory.getInstance("RSA")
-                    .generatePublic(new X509EncodedKeySpec(request.getUnencriptedhash().getSenderKey().toByteArray()));
+                    .generatePublic(new X509EncodedKeySpec(request.getRawData().getSenderKey().toByteArray()));
         } catch (NoSuchAlgorithmException nsae) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
             return;
@@ -87,12 +92,12 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
-        byte[] decriptedhash = BFTBCriptoApp.decrypt(request.getEncryptedhash().toByteArray(), publicKey);
+        byte[] decriptedhash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), publicKey);
         EncryptedStruck response;
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
 
-        if (request.getUnencriptedhash().getSenderKey() == null) {
+        if (request.getRawData().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -103,7 +108,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         try {
-            String ret = _bftb.openAccount(request.getUnencriptedhash().getSenderKey());
+            String ret = _bftb.openAccount(request.getRawData().getSenderKey());
 
             String[] values = ret.split(":");
             OpenAccountResponse accountResponse = null;
@@ -115,16 +120,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
                 accountResponse = OpenAccountResponse.newBuilder().setResponse(ret).build();
             }
 
-            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setOpenAccountResponse(accountResponse)
-                    .setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
-            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder()
-                    .setSequencemessage(sequencemessage)
+            Data sequencemessage = Data.newBuilder().setOpenAccountResponse(accountResponse)
+                    .setNonce(request.getRawData().getData().getNonce()).build();
+            RawData unencriptedhash = RawData.newBuilder()
+                    .setData(sequencemessage)
                     .setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 
-            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(
-                BFTBCriptoApp.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
-                    .setUnencriptedhash(unencriptedhash).build();
+            response = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(BFTBCripto.digitalSign(
+                BFTBCripto.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
+                    .setRawData(unencriptedhash).build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -138,31 +143,37 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void sendAmount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(request.getRawData().getData().toByteArray()).getBytes());
 
-        String senderKey = request.getUnencriptedhash().getSequencemessage()
+        String senderKey = request.getRawData().getData()
                 .getSendAmountRequest().getSenderKey();
 
-        String receiverKey = request.getUnencriptedhash().getSequencemessage()
+        String receiverKey = request.getRawData().getData()
                 .getSendAmountRequest().getReceiverKey();
 
         PublicKey senderPubKey;
         PublicKey receiverPubKey;
-        int amount = request.getUnencriptedhash().getSequencemessage().getSendAmountRequest().getAmount();
+        int amount = request.getRawData().getData().getSendAmountRequest().getAmount();
 
-        senderPubKey = _bftb.searchAccount(request.getUnencriptedhash().getSequencemessage()
+        try {
+            senderPubKey = _bftb.searchAccount(request.getRawData().getData()
+                    .getSendAmountRequest().getSenderKey()).getPublicKey();
+            receiverPubKey = _bftb.searchAccount(request.getRawData().getData()
                 .getSendAmountRequest().getSenderKey()).getPublicKey();
+        } catch (NonExistentAccount e1) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
 
-        receiverPubKey = _bftb.searchAccount(request.getUnencriptedhash().getSequencemessage()
-                .getSendAmountRequest().getSenderKey()).getPublicKey();
+        
 
-        byte[] decriptedhash = BFTBCriptoApp.decrypt(request.getEncryptedhash().toByteArray(), senderPubKey);
+        byte[] decriptedhash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), senderPubKey);
         EncryptedStruck response;
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
 
-        if (request.getUnencriptedhash().getSenderKey() == null) {
+        if (request.getRawData().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -195,16 +206,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             SendAmountResponse ret = SendAmountResponse.newBuilder()
                     .setResponse(_bftb.sendAmount(senderKey, receiverKey, amount))
                     .build();
-            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setSendAmountResponse(ret)
-                    .setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
-            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder()
-                    .setSequencemessage(sequencemessage)
+            Data sequencemessage = Data.newBuilder().setSendAmountResponse(ret)
+                    .setNonce(request.getRawData().getData().getNonce()).build();
+            RawData unencriptedhash = RawData.newBuilder()
+                    .setData(sequencemessage)
                     .setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 
-            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(
-                BFTBCriptoApp.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
-                    .setUnencriptedhash(unencriptedhash).build();
+            response = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(BFTBCripto.digitalSign(
+                BFTBCripto.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
+                    .setRawData(unencriptedhash).build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -221,14 +232,14 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void checkAccount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(request.getRawData().getData().toByteArray()).getBytes());
 
         EncryptedStruck response;
 
-        boolean isCorrect = Arrays.equals(calculatedHash, request.getEncryptedhash().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, request.getDigitalSignature().toByteArray());
 
-        if (request.getUnencriptedhash().getSenderKey() == null) {
+        if (request.getRawData().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -242,7 +253,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         try {
 
             List<String> ret = _bftb.checkAccount(
-                    request.getUnencriptedhash().getSequencemessage().getCheckAccountRequest().getKey().toStringUtf8());
+                    request.getRawData().getData().getCheckAccountRequest().getKey().toStringUtf8());
 
             // Owner of the account has no pending transactions.
             if (ret.size() == 1) {
@@ -254,14 +265,14 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
                 checkresponse = CheckAccountResponse.newBuilder().setBalance(Integer.parseInt(ret.get(0)))
                         .addAllPending(ret.subList(1, ret.size())).build();
             }
-            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setCheckAccountResponse(checkresponse)
-                    .setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
-            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage)
+            Data sequencemessage = Data.newBuilder().setCheckAccountResponse(checkresponse)
+                    .setNonce(request.getRawData().getData().getNonce()).build();
+            RawData unencriptedhash = RawData.newBuilder().setData(sequencemessage)
                     .setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
 
-            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(
-                BFTBCriptoApp.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
-                    .setUnencriptedhash(unencriptedhash).build();
+            response = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(
+                BFTBCripto.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
+                    .setRawData(unencriptedhash).build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -275,18 +286,24 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void receiveAmount(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64()
-                .encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(request.getRawData().getData().toByteArray()).getBytes());
 
-        PublicKey publicKey = _bftb.searchAccount(request.getUnencriptedhash()
-                .getSequencemessage().getReceiveAmountRequest().getReceiverKey()).getPublicKey();
+        PublicKey publicKey;
+        try {
+            publicKey = _bftb.searchAccount(request.getRawData()
+                    .getData().getReceiveAmountRequest().getReceiverKey()).getPublicKey();
+        } catch (NonExistentAccount e) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
 
-        byte[] decriptedhash = BFTBCriptoApp.decrypt(request.getEncryptedhash().toByteArray(), publicKey);
+        byte[] decriptedhash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), publicKey);
         EncryptedStruck response;
 
         boolean isCorrect = Arrays.equals(calculatedHash, decriptedhash);
 
-        if (request.getUnencriptedhash().getSenderKey() == null) {
+        if (request.getRawData().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -295,10 +312,10 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
             return;
         }
-        boolean answer = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getAnswer();
-        String receiverKey = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getReceiverKey();
-        String senderKey = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getSenderKey();
-        int transactionId = request.getUnencriptedhash().getSequencemessage().getReceiveAmountRequest().getTransactionId();
+        boolean answer = request.getRawData().getData().getReceiveAmountRequest().getAnswer();
+        String receiverKey = request.getRawData().getData().getReceiveAmountRequest().getReceiverKey();
+        String senderKey = request.getRawData().getData().getReceiveAmountRequest().getSenderKey();
+        int transactionId = request.getRawData().getData().getReceiveAmountRequest().getTransactionId();
 
         if (receiverKey == null || receiverKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
@@ -323,16 +340,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
                     .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer)).build();
 
-            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setReceiveAmountResponse(logicResponse)
-                    .setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
-            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder()
-                    .setSequencemessage(sequencemessage)
+            Data sequencemessage = Data.newBuilder().setReceiveAmountResponse(logicResponse)
+                    .setNonce(request.getRawData().getData().getNonce()).build();
+            RawData unencriptedhash = RawData.newBuilder()
+                    .setData(sequencemessage)
                     .setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 
-            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(BFTBCriptoApp.digitalsign(
-                BFTBCriptoApp.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
-                    .setUnencriptedhash(unencriptedhash).build();
+            response = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(BFTBCripto.digitalSign(
+                BFTBCripto.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes()), _serverPrivateKey)))
+                    .setRawData(unencriptedhash).build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -351,13 +368,13 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     @Override
     public void audit(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
-        byte[] calculatedHash = BFTBCriptoApp.hash(BaseEncoding.base64().encode(request.getUnencriptedhash().getSequencemessage().toByteArray()).getBytes());
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64().encode(request.getRawData().getData().toByteArray()).getBytes());
 
         EncryptedStruck response;
 
-        boolean isCorrect = Arrays.equals(calculatedHash, request.getEncryptedhash().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, request.getDigitalSignature().toByteArray());
 
-        if (request.getUnencriptedhash().getSenderKey() == null) {
+        if (request.getRawData().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -366,15 +383,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
             return;
         }        
-        try {
-            AuditResponse auditResponse = AuditResponse.newBuilder().addAllSet(_bftb.audit(request.getUnencriptedhash().getSequencemessage().getCheckAccountRequest().getKey().toStringUtf8())).build();
-            
-            Sequencemessage sequencemessage = Sequencemessage.newBuilder().setAuditResponse(auditResponse).setNonce(request.getUnencriptedhash().getSequencemessage().getNonce()).build();
-            Unencriptedhash unencriptedhash = Unencriptedhash.newBuilder().setSequencemessage(sequencemessage).setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
 
-            response = EncryptedStruck.newBuilder().setEncryptedhash(ByteString.copyFrom(
-                BFTBCriptoApp.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
-                    .setUnencriptedhash(unencriptedhash).build();
+        try {
+            AuditResponse auditResponse = AuditResponse.newBuilder().addAllSet(_bftb.audit(request.getRawData().getData().getAuditRequest().getKey().toStringUtf8())).build();
+            
+            Data sequencemessage = Data.newBuilder().setAuditResponse(auditResponse).setNonce(request.getRawData().getData().getNonce()).build();
+            RawData unencriptedhash = RawData.newBuilder().setData(sequencemessage).setSenderKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
+
+            response = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(
+                BFTBCripto.hash(BaseEncoding.base64().encode(sequencemessage.toByteArray()).getBytes())))
+                    .setRawData(unencriptedhash).build();
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
@@ -382,6 +400,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(nea.getMessage()).asRuntimeException());
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
+        } catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
 
     }

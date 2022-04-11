@@ -16,7 +16,7 @@
     <properties>
         <!-- see parent POM for more properties -->
 
-        <mainclass>pt.tecnico.bftb.cripto.BFTBCriptoApp</mainclass>
+        <mainclass>pt.tecnico.bftb.cripto.BFTBCripto</mainclass>
         <server.host>localhost</server.host>
         <server.port>8080</server.port>
     </properties>

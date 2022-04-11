@@ -85,15 +85,20 @@ public class BFTBServerLogic {
     public synchronized String sendAmount(String senderKey, String receiverKey, int amount)
             throws InvalidKeySpecException, NoSuchAlgorithmException, NoAccountException, BFTBDatabaseException {
 
-        Account senderAccount = searchAccount(senderKey);
-        Account receiverAccount = searchAccount(receiverKey);
-
-        if (senderAccount == null) {
+        Account senderAccount;
+        try {
+            senderAccount = searchAccount(senderKey);
+        } catch (NonExistentAccount e) {
             throw new NoAccountException("There are no accounts associated to this Public Key.");
-
-        } else if (receiverAccount == null) {
+        }
+        Account receiverAccount;
+        try {
+            receiverAccount = searchAccount(receiverKey);
+        } catch (NonExistentAccount e) {
             throw new NoAccountException("The account to which you are trying to send money does not exist.");
         }
+
+            
         int initialBalance = senderAccount.getBalance();
         boolean doesAccHaveSuffFunds = senderAccount.subtractBalance(amount);
 
@@ -119,7 +124,7 @@ public class BFTBServerLogic {
     }
 
     public synchronized List<String> audit(String key)
-            throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount {
+            throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount, BFTBDatabaseException {
 
         List<String> set = new ArrayList<>();
         boolean ACCOUNT_FOUND = false;
@@ -181,13 +186,12 @@ public class BFTBServerLogic {
     public synchronized String receiveAmount(String receiverKey, String senderKey, int transactionId, boolean answer)
             throws NonExistentAccount, NonExistentTransaction, NoAuthorization, BFTBDatabaseException {
 
-        Account receiverAccount = searchAccount(receiverKey);
-        Account senderAccount = searchAccount(senderKey);
-
-        if (receiverAccount == null) {
-            throw new NonExistentAccount(Label.ERR_NO_ACC);
-
-        } else if (senderAccount == null) {
+        Account receiverAccount = null;
+        Account senderAccount = null;
+        try{
+            receiverAccount = searchAccount(receiverKey);
+            senderAccount = searchAccount(senderKey);
+        } catch (NonExistentAccount e1) {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
 
@@ -287,14 +291,13 @@ public class BFTBServerLogic {
         }
     }
 
-    public synchronized Account searchAccount(String key) {
+    public synchronized Account searchAccount(String key) throws NonExistentAccount {
         for (Account account : _accounts) {
             if (account.getPublicKeyString().equals(key)) {// Account already exists.
                 return account;
             }
         }
-        return null;
-
+        throw new NonExistentAccount(Label.ERR_NO_ACC);
     }
 
     private synchronized void recoverBFTBServerState() {
@@ -375,7 +378,7 @@ public class BFTBServerLogic {
                 receiverAccount.addTransactionRecoverState(sourceKey,amount,TransactionType.CREDIT);
 
             }
-        } catch (ClassNotFoundException | SQLException cnfe) {
+        } catch (ClassNotFoundException | SQLException | NonExistentAccount cnfe) {
             // Should never happen.
         }
     }
