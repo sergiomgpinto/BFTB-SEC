@@ -37,6 +37,7 @@ public class BFTBFrontend {
     }
 
     public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException {
+
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
         NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));
         return _library.openAccountResponse(stub.openAccount(_library.openAccount(encodedPublicKey, nonce.getNonce())));
@@ -66,11 +67,12 @@ public class BFTBFrontend {
     }
 
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
-            boolean accept) throws ManipulatedPackageException{
+            boolean accept) throws ManipulatedPackageException {
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
         NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(receiverPublicKey.getBytes())));
-        return _library.receiveAmountResponse(stub.receiveAmount(_library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId,
-                accept, nonce.getNonce())));
+        return _library.receiveAmountResponse(
+                stub.receiveAmount(_library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId,
+                        accept, nonce.getNonce())));
     }
 
     public SearchKeysResponse searchKeys() {
