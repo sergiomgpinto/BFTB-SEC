@@ -70,11 +70,6 @@ message EncryptedStruck{
 }
 
 message RawData{
-  Data data = 1;
-  bytes senderKey = 2;
-}
-
-message Data{
   int32 nonce = 1;
   OpenAccountRequest openAccountRequest = 2;
   OpenAccountResponse openAccountResponse = 3;
