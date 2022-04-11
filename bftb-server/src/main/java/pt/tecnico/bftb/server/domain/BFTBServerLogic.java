@@ -15,8 +15,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
-import static io.grpc.Status.UNKNOWN;
-
 public class BFTBServerLogic {
 
     private BFTBMySqlDriver mySqlDriver = new BFTBMySqlDriver();

@@ -7,16 +7,14 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
-import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
-import pt.tecnico.bftb.grpc.Bftb.EncryptedMessage;
-import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
+import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
+import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
+import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
+import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
-import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
-import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.library.BFTBLibraryApp;
 import pt.tecnico.bftb.library.ManipulatedPackageException;
 

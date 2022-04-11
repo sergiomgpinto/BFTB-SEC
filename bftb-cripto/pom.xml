@@ -9,37 +9,40 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>bftb-server</artifactId>
+    <artifactId>bftb-cripto</artifactId>
     <packaging>jar</packaging>
     <name>${project.artifactId}</name>
 
     <properties>
         <!-- see parent POM for more properties -->
 
-        <mainclass>pt.tecnico.bftb.server.BFTBServerApp</mainclass>
-        <zoo.host>localhost</zoo.host>
-		<zoo.port>2181</zoo.port>
+        <mainclass>pt.tecnico.bftb.cripto.BFTBCriptoApp</mainclass>
         <server.host>localhost</server.host>
+        <server.port>8080</server.port>
     </properties>
 
     <dependencies>
+
         <!-- contract brings gRPC dependencies with it -->
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>bftb-contract</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
-      <dependency>
-          <groupId>pt.ulisboa.tecnico.sdis</groupId>
-          <artifactId>zk-naming</artifactId>
-          <version>1.0.3</version>
-      </dependency>
-      <dependency>
-          <groupId>${project.groupId}</groupId>
-          <artifactId>bftb-cripto</artifactId>
-          <version>1.0.0-SNAPSHOT</version>
-      </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>${version.junit}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
     <build>
         <resources>
             <resource>
@@ -65,6 +68,23 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${version.maven-surefire-plugin}</version>
+            </plugin>
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${version.maven-failsafe-plugin}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>${version.exec-maven-plugin}</version>
@@ -78,9 +98,8 @@
                 <configuration>
                     <mainClass>${mainclass}</mainClass>
                     <arguments>
-                        <argument>${zoo.host}</argument>
-                        <argument>${zoo.port}</argument>
                         <argument>${server.host}</argument>
+                        <argument>${server.port}</argument>
                     </arguments>
                 </configuration>
             </plugin>
