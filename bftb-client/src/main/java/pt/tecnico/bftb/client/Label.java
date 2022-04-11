@@ -36,7 +36,7 @@ public interface Label {
 
   String INVALID_ARGS_SND_AMT = "Invalid number of arguments. Format is:[send_amount receiver_publicKey amount].";
 
-  String INVALID_ARGS_CHECK_ACCOUNT = "Invalid number of arguments. Format is:[check_amount PublicKey].";
+  String INVALID_ARGS_CHECK_ACCOUNT = "Invalid number of arguments. Format is:[check_account PublicKey].";
 
   String BALANCE = "Balance: ";
 

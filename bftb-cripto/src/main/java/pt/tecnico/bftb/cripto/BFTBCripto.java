@@ -11,7 +11,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
-public class BFTBCriptoApp {
+public class BFTBCripto {
  
     public static byte[] hash(byte[] inputdata) {
 
@@ -28,7 +28,7 @@ public class BFTBCriptoApp {
         return hash;
 
     }
-    public static byte[] digitalsign(byte[] inputhash, PrivateKey signprivatekey) {
+    public static byte[] digitalSign(byte[] inputhash, PrivateKey signprivatekey) {
 
         Cipher cipher;
         byte[] signature = null;
@@ -45,7 +45,7 @@ public class BFTBCriptoApp {
 
     }
 
-    public static byte[] decrypt(byte[] encryptedString, PublicKey publicKey) {
+    public static byte[] decryptDigitalSignature(byte[] encryptedString, PublicKey publicKey) {
         Cipher cipher;
         byte[] decryptedMessageHash = null;
 
