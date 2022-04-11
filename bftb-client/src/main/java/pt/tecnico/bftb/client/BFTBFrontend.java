@@ -102,6 +102,7 @@ public class BFTBFrontend {
 
         NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(receiverPublicKey.getBytes())));
 
+
         EncryptedStruck encriptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept, nonce.getNonce());
         
         EncryptedStruck encriptedResponse = stub.receiveAmount(encriptedRequest);
