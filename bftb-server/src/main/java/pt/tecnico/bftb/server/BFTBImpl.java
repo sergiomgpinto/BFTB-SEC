@@ -238,8 +238,9 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         EncryptedStruck response;
 
         boolean isCorrect = Arrays.equals(calculatedHash, request.getDigitalSignature().toByteArray());
-
+        System.out.println("iscorrect");
         if (request.getRawData().getSenderKey() == null) {
+            System.out.println("null");
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
         }
@@ -278,6 +279,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onCompleted();
 
         } catch (NonExistentAccount nea) {
+            System.out.println("testecatch");
             responseObserver.onError(ABORTED.withDescription(nea.getMessage()).asRuntimeException());
         }
 

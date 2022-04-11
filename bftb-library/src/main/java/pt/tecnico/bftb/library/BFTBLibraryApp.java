@@ -181,7 +181,7 @@ public class BFTBLibraryApp {
     }
 
     public CheckAccountResponse checkAccountResponse(EncryptedStruck response) throws ManipulatedPackageException{
-
+        System.out.println("entrada checkacount libray");
         byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
                 .encode(response.getRawData().getData().toByteArray()).getBytes());
 

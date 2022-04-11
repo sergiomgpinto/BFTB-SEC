@@ -1,5 +1,6 @@
 package pt.tecnico.bftb.client;
 
+import java.io.IOException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
@@ -7,6 +8,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
@@ -24,8 +26,8 @@ public class BFTBFrontend {
     private int _port;
     private String _host;
     private BFTBLibraryApp _library;
-    final String _target;
-    final ManagedChannel _channel;
+    String _target;
+    ManagedChannel _channel;
 
     public BFTBFrontend(String host, int port, PrivateKey privateKey, PublicKey publickey) {
         _host = host;
@@ -35,7 +37,13 @@ public class BFTBFrontend {
         _library = new BFTBLibraryApp(privateKey, publickey);
     }
 
+    public void setNewTarget(String host, int port) {
+        _target = host + ":" + port;
+        _channel = ManagedChannelBuilder.forTarget(_target).usePlaintext().build();
+    }
+
     public BFTBGrpc.BFTBBlockingStub StubCreator() {
+
         return BFTBGrpc.newBlockingStub(_channel);
     }
 
@@ -66,7 +74,7 @@ public class BFTBFrontend {
         return _library.sendAmountResponse(encriptedResponse);
     }
 
-    public CheckAccountResponse checkAccount(String publicKey) throws ManipulatedPackageException {
+    public CheckAccountResponse checkAccount(String publicKey) throws ManipulatedPackageException,ZooKeeperServer.MissingSessionException {
 
         BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
@@ -76,8 +84,12 @@ public class BFTBFrontend {
 
         EncryptedStruck encriptedRequest = _library.checkAccount(bytepublic, nonce.getNonce());
 
-        EncryptedStruck encriptedResponse = stub.checkAccount(encriptedRequest);
-
+        EncryptedStruck encriptedResponse = null;
+        try {
+            encriptedResponse = stub.checkAccount(encriptedRequest);
+        }catch (Exception e) {
+            throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+        }
         return _library.checkAccountResponse(encriptedResponse);
     }
 

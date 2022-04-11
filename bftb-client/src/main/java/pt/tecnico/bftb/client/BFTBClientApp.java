@@ -18,6 +18,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.StatusRuntimeException;
 import io.grpc.netty.shaded.io.netty.util.internal.ThreadLocalRandom;
+import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.library.ManipulatedPackageException;
@@ -251,7 +252,7 @@ public class BFTBClientApp {
 
                 }
 
-            } catch (StatusRuntimeException e) {// This is where the exceptions from grpc are caught.
+            } catch (ZooKeeperServer.MissingSessionException e) {// This is where the exceptions from grpc are caught.
                 try {
                     zkNaming.unbind(mainPath + "/Server" + serverLastChar, serverInfo);
 
@@ -264,7 +265,8 @@ public class BFTBClientApp {
                     serverHost = splittedServerInfo[0];
                     serverPort = Integer.parseInt(splittedServerInfo[1]);
                     serverLastChar = serverInfo.charAt(serverInfo.length() - 1);
-                    frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);
+                    frontend.setNewTarget(serverHost,serverPort);
+                    //frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);
 
                     System.out.println("\nServer died.\nConnecting to another replica...");
                     System.out.println(
