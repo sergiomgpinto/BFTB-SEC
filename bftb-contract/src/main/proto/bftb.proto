@@ -12,6 +12,7 @@ message NonceRequest{
 }
 
 message NonceResponse{
+  bytes serverPublicKey = 1;// To verify digital signature in the library.
   int32 nonce = 2;
 }
 /*-------------------- Read Operations ---------------------*/
@@ -97,12 +98,14 @@ message RawData{
   ReceiveAmountResponse receiveAmountResponse = 11;
   SearchKeysRequest searchKeyRequest = 12;
   SearchKeysResponse searchKeyResponse = 13;
+  NonceRequest nonceRequest = 14;
+  NonceResponse nonceResponse = 15;
 }
 
 /*------------------------------------ Services ------------------------------------*/
 
 service BFTB{
-  rpc getNonce (NonceRequest) returns (NonceResponse);
+  rpc getNonce (EncryptedStruck) returns (EncryptedStruck);
   rpc openAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc sendAmount(EncryptedStruck) returns (EncryptedStruck);
   rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);

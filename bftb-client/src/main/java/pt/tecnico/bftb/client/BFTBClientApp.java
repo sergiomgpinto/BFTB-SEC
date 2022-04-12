@@ -11,7 +11,6 @@ import java.security.PublicKey;
 import java.security.KeyStore.PrivateKeyEntry;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 import com.google.protobuf.ByteString;
@@ -293,8 +292,6 @@ public class BFTBClientApp {
                         System.out.println(Label.INVALIDCOMMAND);
 
                 }
-            } catch (StatusRuntimeException sre) {// This is where the exceptions from grpc are caught.
-                System.out.println(sre.getMessage());
             }
             catch (DetectedReplayAttackException drae) {
                 System.out.println(drae.getMessage());
@@ -310,18 +307,22 @@ public class BFTBClientApp {
                     splittedServerInfo = serverInfo.split(":");
                     serverHost = splittedServerInfo[0];
                     serverPort = Integer.parseInt(splittedServerInfo[1]);
-                    serverLastChar = serverInfo.charAt(serverInfo.length() - 1);
                     frontend.setNewTarget(serverHost,serverPort);
 
                     System.out.println("\nServer died.\nConnecting to another replica...");
                     System.out.println(
                             "Connected to the server running in port number " + serverPort + "!\n");
+                    System.out.println("Retype your command please.");
 
                 } catch (ZKNamingException e1) {
-                    System.out.println("Error while trying to connect to other replica.");
+                    System.out.println("Error while trying to connect to another replica.");
                 }
 
-            } catch (NumberFormatException nfe) {
+            }
+            catch (StatusRuntimeException sre) {// This is where the exceptions from grpc are caught.
+                System.out.println(sre.getMessage());
+            }
+            catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
             } catch (ManipulatedPackageException e) {
                 e.printStackTrace();

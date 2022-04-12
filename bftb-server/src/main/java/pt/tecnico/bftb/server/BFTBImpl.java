@@ -20,7 +20,6 @@ import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
 import io.grpc.stub.StreamObserver;
-import org.jetbrains.annotations.NotNull;
 import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
@@ -31,17 +30,12 @@ import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
 import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
-import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
 import pt.tecnico.bftb.server.domain.Account;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.server.domain.Label;
-import pt.tecnico.bftb.server.domain.exception.BFTBDatabaseException;
-import pt.tecnico.bftb.server.domain.exception.NoAccountException;
-import pt.tecnico.bftb.server.domain.exception.NoAuthorization;
-import pt.tecnico.bftb.server.domain.exception.NonExistentAccount;
-import pt.tecnico.bftb.server.domain.exception.NonExistentTransaction;
+import pt.tecnico.bftb.server.domain.exception.*;
 
 public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
@@ -56,25 +50,80 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
     }
 
     /**************************** Protocol Messages ***********************************/
-    //getNonce
-
+    // getNonce
+    // Since it also modifies states messages will be signed.
     @Override
-    public void getNonce(NonceRequest request, StreamObserver<NonceResponse> responseObserver) {
+    public void getNonce(EncryptedStruck request, StreamObserver<EncryptedStruck> responseObserver) {
 
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(request.getRawData().toByteArray()).getBytes());
+
+        if (request.getRawData().getNonceRequest().getSenderKey() == null) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        PublicKey publicKey = null;
         NonceResponse response = null;
 
-        if (request.getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
+        try {
+            if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
+                try {
+                    publicKey = _bftb.searchAccount(request.getRawData().getNonceRequest().getSenderKey()
+                                    .toString(StandardCharsets.UTF_8))
+                            .getPublicKey();
+                }
+                catch (NonExistentAccount nea) {
+                    // Should never happen.
+                }
+            }
+            else {
+                publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(request
+                        .getRawData()
+                        .getNonceRequest()
+                        .getSenderKey()
+                        .toByteArray()));
+            }
+        } catch (NoSuchAlgorithmException nsae) {
+            responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
+            return;
+        } catch (InvalidKeySpecException ikpe) {
+            responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
+            return;
+        }
+
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), publicKey);
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
+
+        if (!isCorrect) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }
+
+        if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
             try {
-                response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getSenderKey()
-                        .toString(StandardCharsets.UTF_8)).getPublicKey())).build();
+                response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getRawData()
+                                .getNonceRequest().getSenderKey()
+                        .toString(StandardCharsets.UTF_8)).getPublicKey()))
+                        .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
             } catch (NonExistentAccount e) {
                 responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
                 return;
             }
         } else {
-            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getSenderKey())).build();
+            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getRawData()
+                            .getNonceRequest().getSenderKey()))
+                    .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
         }
-        responseObserver.onNext(response);
+
+        RawData rawData = RawData.newBuilder().setNonceResponse(response).build();
+
+         EncryptedStruck encryptedResponse = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(BFTBCripto.digitalSign(
+                        BFTBCripto.hash(BaseEncoding.base64().encode(rawData.toByteArray()).getBytes()), _serverPrivateKey)))
+                .setRawData(rawData).build();
+
+        responseObserver.onNext(encryptedResponse);
         responseObserver.onCompleted();
     }
 
@@ -348,10 +397,10 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
-        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), senderPubKey);
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(request.getDigitalSignature().toByteArray(), senderPubKey);
         EncryptedStruck response;
 
-        boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
 
         if (request.getRawData().getSendAmountRequest().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
