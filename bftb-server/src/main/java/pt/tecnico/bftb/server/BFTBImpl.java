@@ -1,10 +1,5 @@
 package pt.tecnico.bftb.server;
 
-import static io.grpc.Status.ABORTED;
-import static io.grpc.Status.INVALID_ARGUMENT;
-import static io.grpc.Status.PERMISSION_DENIED;
-import static io.grpc.Status.UNKNOWN;
-
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -19,6 +14,8 @@ import java.util.List;
 import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
+import io.grpc.Context;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
@@ -36,6 +33,8 @@ import pt.tecnico.bftb.server.domain.Account;
 import pt.tecnico.bftb.server.domain.BFTBServerLogic;
 import pt.tecnico.bftb.server.domain.Label;
 import pt.tecnico.bftb.server.domain.exception.*;
+
+import static io.grpc.Status.*;
 
 public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
@@ -101,6 +100,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
+            return;
+        }
+
         if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
             try {
                 response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getRawData()
@@ -158,6 +162,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (receivedNonce != correctStoredNonce) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.REPLAY_ATTACK).asRuntimeException());
+            return;
+        }
+
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
             return;
         }
 
@@ -220,6 +229,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
+            return;
+        }
+
         try {
             AuditResponse auditResponse = AuditResponse.newBuilder().addAllSet(_bftb.audit(request.getRawData().getAuditRequest().getKey().toStringUtf8())).build();
 
@@ -235,10 +249,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(nea.getMessage()).asRuntimeException());
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
-        } catch (BFTBDatabaseException bde) {
-            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
-
     }
 
     @Override
@@ -259,6 +270,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (receivedNonce != correctStoredNonce) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.REPLAY_ATTACK).asRuntimeException());
+            return;
+        }
+
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
             return;
         }
 
@@ -342,6 +358,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             }
         }
 
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
+            return;
+        }
+
         try {
             String ret = _bftb.openAccount(request.getRawData().getOpenAccountRequest().getKey());
 
@@ -370,8 +391,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onCompleted();
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
-        } catch (BFTBDatabaseException bde) {
-            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
     }
 
@@ -439,6 +458,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
+            return;
+        }
+
         try {
 
             SendAmountResponse ret = SendAmountResponse.newBuilder()
@@ -458,10 +482,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
         } catch (NoAccountException nae) {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
-        } catch (BFTBDatabaseException bde) {
-            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
-
     }
 
     @Override
@@ -525,6 +546,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(CANCELLED.withDescription("Client canceled request.").asRuntimeException());
+            return;
+        }
+
         try {
             ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
                     .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer))
@@ -547,8 +573,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(net.getMessage()).asRuntimeException());
         } catch (NoAuthorization na) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
-        } catch (BFTBDatabaseException bde) {
-            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
     }
 

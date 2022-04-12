@@ -2,13 +2,11 @@ package pt.tecnico.bftb.client;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.util.concurrent.TimeUnit;
 
 import com.google.protobuf.ByteString;
 
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
+import io.grpc.*;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
@@ -30,6 +28,8 @@ public class BFTBFrontend {
     private BFTBLibraryApp _library;
     String _target;
     ManagedChannel _channel;
+    final int _numberOfAttemptsToRetransmitPacket = 5 ;
+    final long _duration = 100;
 
     public BFTBFrontend(String host, int port, PrivateKey privateKey, PublicKey publickey) {
         _host = host;
@@ -48,9 +48,11 @@ public class BFTBFrontend {
     public BFTBGrpc.BFTBBlockingStub StubCreator() {
 
         return BFTBGrpc.newBlockingStub(_channel);
+
     }
 
-    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException
+            , DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
 
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -63,7 +65,30 @@ public class BFTBFrontend {
 
             EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce());
 
-            EncryptedStruck encryptedResponse = stub.openAccount(encryptedRequest);
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
+
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .openAccount(encryptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
 
             return _library.openAccountResponse(encryptedResponse);
         }
@@ -79,7 +104,7 @@ public class BFTBFrontend {
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey, int amount)
-            throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+            throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
         
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -92,7 +117,30 @@ public class BFTBFrontend {
 
             EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount, nonce.getNonce());
 
-            EncryptedStruck encryptedResponse = stub.sendAmount(encryptedRequest);
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
+
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .sendAmount(encryptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
 
             return _library.sendAmountResponse(encryptedResponse);
         }
@@ -108,7 +156,7 @@ public class BFTBFrontend {
     }
 
     public CheckAccountResponse checkAccount(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException
-            , ZooKeeperServer.MissingSessionException, DetectedReplayAttackException, StatusRuntimeException {
+            , ZooKeeperServer.MissingSessionException, DetectedReplayAttackException, StatusRuntimeException, PacketDropAttack {
 
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -124,11 +172,32 @@ public class BFTBFrontend {
 
             EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce(),userPublicKey);
 
-            EncryptedStruck encriptedResponse = null;
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
 
-            encriptedResponse = stub.checkAccount(encriptedRequest);
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .checkAccount(encriptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
-            return _library.checkAccountResponse(encriptedResponse);
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
+
+            return _library.checkAccountResponse(encryptedResponse);
         }
         catch (io.grpc.StatusRuntimeException e) {
             if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
@@ -141,7 +210,7 @@ public class BFTBFrontend {
         }
     }
 
-    public AuditResponse audit(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+    public AuditResponse audit(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
 
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -157,7 +226,30 @@ public class BFTBFrontend {
 
             EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(), userPublicKey);
 
-            EncryptedStruck encryptedResponse = stub.audit(encryptedRequest);
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
+
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .audit(encryptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
 
             return _library.auditResponse(encryptedResponse);
         }
@@ -172,7 +264,7 @@ public class BFTBFrontend {
         }
     }
 
-    public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+    public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
 
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -185,7 +277,30 @@ public class BFTBFrontend {
 
             EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept, nonce.getNonce());
 
-            EncryptedStruck encryptedResponse = stub.receiveAmount(encryptedRequest);
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
+
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .receiveAmount(encryptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
 
             return _library.receiveAmountResponse(encryptedResponse);
         }
@@ -200,7 +315,7 @@ public class BFTBFrontend {
         }
     }
 
-    public SearchKeysResponse searchKeys(String userPublicKeyString) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+    public SearchKeysResponse searchKeys(String userPublicKeyString) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
         
         try {
             BFTBGrpc.BFTBBlockingStub stub = StubCreator();
@@ -213,7 +328,30 @@ public class BFTBFrontend {
 
             EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString);
 
-            EncryptedStruck encryptedResponse = stub.searchKeys(encryptedRequest);
+            int numberOfAttempts = 0;
+            EncryptedStruck encryptedResponse = null;
+
+            do {
+                try {
+                    encryptedResponse = stub
+                            .withDeadlineAfter((long) (_duration * Math.pow(2,numberOfAttempts)), TimeUnit.MILLISECONDS)
+                            .searchKeys(encryptedRequest);
+                    break;
+                }
+                catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                        numberOfAttempts += 1;
+                    }
+                    else {
+                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    }
+                }
+            }
+            while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+            if (numberOfAttempts == 5) {
+                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+            }
 
             return _library.searchKeysResponse(encryptedResponse);
         }
