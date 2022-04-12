@@ -36,6 +36,23 @@ public class BFTBServerLogic {
         return nonce;
     }
 
+    public synchronized int getUserNonce(String publicKey) {
+
+        Account account = null;
+        int nonce = 0;
+
+        try {
+            account = searchAccount(publicKey);
+            PublicKey pubKey = account.getPublicKey();
+            nonce = nonces.get(pubKey);
+        }
+        catch (NonExistentAccount nea) {
+            //Should never happen.
+        }
+
+        return nonce;
+    }
+
     public synchronized int newNonce(PublicKey publicKey) {
         int nonce = randomGenerator.nextInt();
         PublicKey pubKey = null;
@@ -294,6 +311,15 @@ public class BFTBServerLogic {
     public synchronized Account searchAccount(String key) throws NonExistentAccount {
         for (Account account : _accounts) {
             if (account.getPublicKeyString().equals(key)) {// Account already exists.
+                return account;
+            }
+        }
+        throw new NonExistentAccount(Label.ERR_NO_ACC);
+    }
+
+    public synchronized Account searchAccount(PublicKey key) throws NonExistentAccount {
+        for (Account account : _accounts) {
+            if (account.getPublicKey().equals(key)) {// Account already exists.
                 return account;
             }
         }

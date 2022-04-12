@@ -10,6 +10,7 @@ import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
 import pt.tecnico.bftb.cripto.BFTBCripto;
+import pt.tecnico.bftb.grpc.Bftb;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
@@ -23,224 +24,296 @@ import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
+import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
+import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.RawData;
-import pt.tecnico.bftb.grpc.Bftb.Data;;
 
 public class BFTBLibraryApp {
 
     PrivateKey _userPrivateKey;
     PublicKey _userPublicKey;
-    PublicKey _serverPublicKey = null;
+    int _nonce;
 
     public BFTBLibraryApp(PrivateKey privateKey, PublicKey publickey) {
         _userPrivateKey = privateKey;
         _userPublicKey = publickey;
-
     }
 
+    /**************************** Protocol Messages ***********************************/
+    //getNonce
     public NonceRequest getNonce(ByteString encodedPublicKey) {
         return NonceRequest.newBuilder().setSenderKey(encodedPublicKey).build();
     }
 
+    /**************************** Read Only Operations ***********************************/
+    // checkAccount
+    // audit
+    // searchKeys
 
-    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce) {
+    public EncryptedStruck checkAccount(ByteString bytepublic, int nonce, String userPublicKeyString) {
 
-        OpenAccountRequest openAccountRequest = OpenAccountRequest.newBuilder()
-                                                        .setKey(encodedPublicKey)
-                                                        .build();
-
-        Data data = Data.newBuilder()
-                        .setOpenAccountRequest(openAccountRequest)
-                        .setNonce(nonce)
-                        .build();
-
-        RawData rawData = RawData.newBuilder()
-                        .setData(data)
-                        .setSenderKey(encodedPublicKey)
-                        .build();
-
-        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
-
-        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
-
-        return EncryptedStruck.newBuilder()
-                .setDigitalSignature(digitalSignature)
-                .setRawData(rawData)
-                .build();
-    }
-
-    public OpenAccountResponse openAccountResponse(EncryptedStruck response) throws ManipulatedPackageException {
-
-        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                .encode(response.getRawData().getData().toByteArray()).getBytes());
-
-        PublicKey publicKey = null;
-
-        try {
-            publicKey = KeyFactory.getInstance("RSA")
-                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getSenderKey().toByteArray()));
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-
-        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
-
-        OpenAccountResponse accResponse = response.getRawData().getData().getOpenAccountResponse();
-
-        boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
-
-        if (!isCorrect) {
-            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
-                    " was sent.");
-        }
-        return OpenAccountResponse.newBuilder().setPublicKey(accResponse.getPublicKey())
-                .setResponse(accResponse.getResponse()).build();
-    }
-
-    public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
-            int amount, int nonce) {
-
-        SendAmountRequest sendAmountRequest = SendAmountRequest.newBuilder()
-                                                .setSenderKey(senderPublicKey)
-                                                .setReceiverKey(receiverPublicKey)
-                                                .setAmount(amount)
-                                                .build();
-
-        Data data = Data.newBuilder()
-                        .setSendAmountRequest(sendAmountRequest)
-                        .setNonce(nonce)
-                        .build();
-
-        RawData rawData = RawData.newBuilder()
-                        .setData(data)
-                        .setSenderKey(ByteString.copyFrom(senderPublicKey.getBytes()))
-                        .build();
-
-        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
-
-        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
-
-        return EncryptedStruck.newBuilder()
-                .setDigitalSignature(digitalSignature)
-                .setRawData(rawData)
-                .build();
-    }
-
-    public SendAmountResponse sendAmountResponse(EncryptedStruck response) throws ManipulatedPackageException {
-
-        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                .encode(response.getRawData().getData().toByteArray()).getBytes());
-
-        PublicKey publicKey = null;
-
-        try {
-            publicKey = KeyFactory.getInstance("RSA")
-                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getSenderKey().toByteArray()));
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-
-        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
-
-        SendAmountResponse accResponse = response.getRawData().getData().getSendAmountResponse();
-
-        boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
-
-        if (!isCorrect) {
-            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
-                    " was sent.");
-        }
-        return SendAmountResponse.newBuilder().setResponse(accResponse.getResponse())
-                .setResponse(accResponse.getResponse()).build();
-    }
-
-    public EncryptedStruck checkAccount(ByteString bytepublic, int nonce) {
+        this._nonce = nonce;
 
         CheckAccountRequest checkAccountRequest = CheckAccountRequest.newBuilder()
                         .setKey(bytepublic)
+                        .setUserKey(userPublicKeyString)
                         .build();
 
-        Data data = Data.newBuilder()
+        RawData rawData = RawData.newBuilder()
                         .setCheckAccountRequest(checkAccountRequest)
                         .setNonce(nonce)
                         .build();
 
-        RawData rawData = RawData.newBuilder()
-                        .setData(data)
-                        .setSenderKey(bytepublic)
-                        .build();
-
-        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
-
-        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+        ByteString digest = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
 
         return EncryptedStruck.newBuilder()
-                                .setDigitalSignature(digitalSignature)
+                                .setDigest(digest)
                                 .setRawData(rawData)
                                 .build();
     }
 
-    public CheckAccountResponse checkAccountResponse(EncryptedStruck response) throws ManipulatedPackageException{
-
+    public CheckAccountResponse checkAccountResponse(EncryptedStruck response) throws ManipulatedPackageException, DetectedReplayAttackException{
         byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                .encode(response.getRawData().getData().toByteArray()).getBytes());
+                .encode(response.getRawData().toByteArray()).getBytes());
 
 
-        CheckAccountResponse accResponse = response.getRawData().getData().getCheckAccountResponse();
+        CheckAccountResponse accResponse = response.getRawData().getCheckAccountResponse();
 
-        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigitalSignature().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigest().toByteArray());
 
         if (!isCorrect) {
             throw new ManipulatedPackageException("Either package was tempered or a older server response" +
                     " was sent.");
+        }
+
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
         }
 
         return CheckAccountResponse.newBuilder().setBalance(accResponse.getBalance()).addAllPending(accResponse.getPendingList()).build();
     }
 
-    public EncryptedStruck audit(ByteString bytepublic, int nonce) {
+    public EncryptedStruck audit(ByteString bytepublic, int nonce, String userPublicKeyString) {
 
-        AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic).build();
+        this._nonce = nonce;
 
-        Data data = Data.newBuilder()
+        AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic)
+                .setUserKey(userPublicKeyString)
+                .build();
+
+        RawData rawData = RawData.newBuilder()
                         .setAuditRequest(auditRequest)
                         .setNonce(nonce)
                         .build();
 
-        RawData rawData = RawData.newBuilder()
-                                .setData(data)
-                                .setSenderKey(bytepublic)
-                                .build();
-
-        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
-
-        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+        ByteString digest = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
 
         return EncryptedStruck.newBuilder()
-                                .setDigitalSignature(digitalSignature)
+                                .setDigest(digest)
                                 .setRawData(rawData)
                                 .build();
     }
 
-    public AuditResponse auditResponse(EncryptedStruck response) throws ManipulatedPackageException{
+    public AuditResponse auditResponse(EncryptedStruck response) throws ManipulatedPackageException,DetectedReplayAttackException{
 
         byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                .encode(response.getRawData().getData().toByteArray()).getBytes());
+                .encode(response.getRawData().toByteArray()).getBytes());
 
 
-        AuditResponse accResponse = response.getRawData().getData().getAuditResponse();
+        AuditResponse accResponse = response.getRawData().getAuditResponse();
 
-        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigitalSignature().toByteArray());
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigest().toByteArray());
 
         if (!isCorrect) {
             throw new ManipulatedPackageException("Either package was tempered or a older server response" +
                     " was sent.");
         }
 
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
+        }
+
+
         return AuditResponse.newBuilder().addAllSet(accResponse.getSetList()).build();
     }
 
+    public EncryptedStruck searchKeys(int nonce, String userPublicKeyString) {
+
+        this._nonce = nonce;
+
+        SearchKeysRequest searchKeysRequest = SearchKeysRequest.newBuilder()
+                .setUserKey(userPublicKeyString).build();
+
+        RawData rawData = RawData.newBuilder()
+                .setSearchKeyRequest(searchKeysRequest)
+                .setNonce(nonce)
+                .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+        ByteString digest = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
+
+        return EncryptedStruck.newBuilder()
+                .setDigest(digest)
+                .setRawData(rawData)
+                .build();
+    }
+
+    public SearchKeysResponse searchKeysResponse(EncryptedStruck response) throws ManipulatedPackageException,DetectedReplayAttackException{
+
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().toByteArray()).getBytes());
+
+        SearchKeysResponse searchKeysResponse = response.getRawData().getSearchKeyResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, response.getDigest().toByteArray());
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
+        }
+
+        return SearchKeysResponse.newBuilder().addAllResult(searchKeysResponse.getResultList()).build();
+    }
+
+    /**************************** Write Operations ***********************************/
+    // openAccount
+    // sendAmount
+    // receiveAmount
+
+    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce) {
+
+        this._nonce = nonce;
+
+        OpenAccountRequest openAccountRequest = OpenAccountRequest.newBuilder()
+                .setKey(encodedPublicKey)
+                .build();
+
+        RawData rawData = RawData.newBuilder()
+                .setOpenAccountRequest(openAccountRequest)
+                .setNonce(nonce)
+                .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
+
+        return EncryptedStruck.newBuilder()
+                .setDigitalSignature(digitalSignature)
+                .setRawData(rawData)
+                .build();
+    }
+
+    public OpenAccountResponse openAccountResponse(EncryptedStruck response) throws ManipulatedPackageException,DetectedReplayAttackException{
+
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().toByteArray()).getBytes());
+
+        PublicKey publicKey = null;
+
+        try {
+            publicKey = KeyFactory.getInstance("RSA")
+                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getOpenAccountResponse().getServerPublicKey().toByteArray()));
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
+
+        OpenAccountResponse accResponse = response.getRawData().getOpenAccountResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
+        }
+
+        return OpenAccountResponse.newBuilder().setPublicKey(accResponse.getPublicKey())
+                .setResponse(accResponse.getResponse()).build();
+    }
+
+    public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
+                                      int amount, int nonce) {
+
+        this._nonce = nonce;
+
+        SendAmountRequest sendAmountRequest = SendAmountRequest.newBuilder()
+                .setSenderKey(senderPublicKey)
+                .setReceiverKey(receiverPublicKey)
+                .setAmount(amount)
+                .build();
+
+        RawData rawData = RawData.newBuilder()
+                .setSendAmountRequest(sendAmountRequest)
+                .setNonce(nonce)
+                .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
+
+        return EncryptedStruck.newBuilder()
+                .setDigitalSignature(digitalSignature)
+                .setRawData(rawData)
+                .build();
+    }
+
+    public SendAmountResponse sendAmountResponse(EncryptedStruck response) throws ManipulatedPackageException, DetectedReplayAttackException{
+
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().toByteArray()).getBytes());
+
+        PublicKey publicKey = null;
+
+        try {
+            publicKey = KeyFactory.getInstance("RSA")
+                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getSendAmountResponse().getServerPublicKey().toByteArray())); //get the responses!!!
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
+
+        SendAmountResponse accResponse = response.getRawData().getSendAmountResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
+        }
+
+        return SendAmountResponse.newBuilder().setResponse(accResponse.getResponse())
+                .setResponse(accResponse.getResponse()).build();
+    }
+
     public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept, int nonce) {
+
+        this._nonce = nonce;
 
         ReceiveAmountRequest receiveAmountRequest = ReceiveAmountRequest.newBuilder()
                                                         .setReceiverKey(receiverPublicKey)
@@ -249,19 +322,14 @@ public class BFTBLibraryApp {
                                                         .setAnswer(accept)
                                                         .build();
 
-        Data data = Data.newBuilder()
+        RawData rawData = RawData.newBuilder()
                         .setReceiveAmountRequest(receiveAmountRequest)
                         .setNonce(nonce)
                         .build();
 
-        RawData rawData = RawData.newBuilder()
-                        .setData(data)
-                        .setSenderKey(ByteString.copyFrom(receiverPublicKey.getBytes()))
-                        .build();
-
-        byte[] rawDataBytes = BaseEncoding.base64().encode(data.toByteArray()).getBytes();
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
         
-        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash        (rawDataBytes), _userPrivateKey));
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
 
         return EncryptedStruck.newBuilder()
                                 .setDigitalSignature(digitalSignature)
@@ -270,34 +338,37 @@ public class BFTBLibraryApp {
 
     }
 
-    public ReceiveAmountResponse receiveAmountResponse(EncryptedStruck response) throws ManipulatedPackageException {
+    public ReceiveAmountResponse receiveAmountResponse(EncryptedStruck response) throws ManipulatedPackageException, DetectedReplayAttackException{
         byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                .encode(response.getRawData().getData().toByteArray()).getBytes());
+                .encode(response.getRawData().toByteArray()).getBytes());
 
         PublicKey publicKey = null;
 
         try {
             publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec
-                    (response.getRawData().getSenderKey().toByteArray()));
+                    (response.getRawData().getReceiveAmountResponse().getServerPublicKey().toByteArray()));
         }
         catch (Exception e) {
             System.out.println(e);
         }
 
-        byte[] decriptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(),publicKey);
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(),publicKey);
 
-        ReceiveAmountResponse accResponse = response.getRawData().getData().getReceiveAmountResponse();
+        ReceiveAmountResponse accResponse = response.getRawData().getReceiveAmountResponse();
 
-        boolean isCorrect = Arrays.equals(calculatedHash, decriptedHash);
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
 
         if (!isCorrect) {
             throw new ManipulatedPackageException("Either package was tempered or a older server response" +
                     " was sent.");
         }
-        return ReceiveAmountResponse.newBuilder().setResult(accResponse.getResult()).build();
-    }
 
-    public SearchKeysRequest searchKeys() {
-        return SearchKeysRequest.newBuilder().build();
+        int receivedNonce = response.getRawData().getNonce();
+        if (_nonce != receivedNonce) {
+            throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
+                    "Message received doe snot hold proterty of freshness");
+        }
+
+        return ReceiveAmountResponse.newBuilder().setResult(accResponse.getResult()).build();
     }
 }

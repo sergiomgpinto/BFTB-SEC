@@ -46,6 +46,9 @@ public class BFTBServerApp {
 
     static PrivateKey serverPrivateKey;
     static PublicKey serverPublicKey;
+    static String finalPath = "";
+    static String port = "";
+    static ZKNaming zkNaming = null;
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
@@ -53,15 +56,20 @@ public class BFTBServerApp {
         final String zooHost = args[0];// zookeeper server host
         final String zooPort = args[1];// zookeeper server port
         final String host = args[2];// server host
-        String finalPath = "";
-        String port = "";
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
                 try {
                     Thread.sleep(200);
-
+                    if (zkNaming != null) {
+                        try {
+                            zkNaming.unbind(finalPath, host, String.valueOf(port));
+                        }
+                        catch (ZKNamingException e) {
+                            //Should never happen.
+                        }
+                    }
                     System.out.println("\nA fatal error occurred in the server.");
                     System.out.println("Closing...");
                 } catch (InterruptedException ie) {
@@ -86,7 +94,7 @@ public class BFTBServerApp {
 
         try {
 
-            ZKNaming zkNaming = new ZKNaming(zooHost, zooPort);// zookeeper server
+            zkNaming = new ZKNaming(zooHost, zooPort);// zookeeper server
 
             String originPath = System.getProperty("user.dir");
             Path path = Paths.get(originPath);
@@ -105,14 +113,6 @@ public class BFTBServerApp {
 
             zkNaming.rebind(finalPath, host, port);
 
-        } catch (FileNotFoundException | NoSuchAlgorithmException | UnrecoverableEntryException | CertificateException
-                | KeyStoreException e) {
-            System.out.println(e);
-            return;
-        } catch (ZKNamingException zkne) {
-            System.out.println("An error occurred in a zookeeper service while trying to connect the server");
-            return;
-        }
         System.out.println("Byzantine Fault Tolerant Banking server");
 
         System.out.println("Hello, I'm a server running on port number " + port);
@@ -130,6 +130,14 @@ public class BFTBServerApp {
         }).start();
 
         server.awaitTermination();
+        } catch (FileNotFoundException | NoSuchAlgorithmException | UnrecoverableEntryException | CertificateException
+                | KeyStoreException e) {
+            System.out.println(e);
+            return;
+        } catch (ZKNamingException zkne) {
+            System.out.println("An error occurred in a zookeeper service while trying to connect the server");
+            return;
+        }
     }
 
 }
