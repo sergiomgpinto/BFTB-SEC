@@ -21,6 +21,7 @@ import io.grpc.netty.shaded.io.netty.util.internal.ThreadLocalRandom;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
+import pt.tecnico.bftb.library.DetectedReplayAttackException;
 import pt.tecnico.bftb.library.ManipulatedPackageException;
 import pt.ulisboa.tecnico.sdis.zk.ZKNaming;
 import pt.ulisboa.tecnico.sdis.zk.ZKNamingException;
@@ -72,6 +73,27 @@ public class BFTBClientApp {
         String publicKeyString = null;
         String name = System.console().readLine(Label.CLIENT_NAME);
         char lastChar = name.charAt(name.length() - 1);
+
+        int counter = 3; // User has 3 attempts to provide correct password.
+        while (counter != 0) {
+            String inputPassword = System.console().readLine(Label.PASSWORD);
+
+            if (inputPassword.equals("keystoreuser" + lastChar)) {
+                System.out.printf("Welcome to the Byzantine Fault Tolerant Banking Client App %s.%n",name);
+                break;
+            }
+            else{
+                if (counter == 1) {
+                    System.out.println("User authentication failed.");
+                    System.out.println("Closing...");
+                    return;
+                }
+                System.out.println("Wrong password.");
+                counter -= 1;
+                System.out.printf("You have %d attempt(s) left.%n",counter);
+            }
+        }
+
         String mainPath = "/nodes";
 
         try {
@@ -120,21 +142,12 @@ public class BFTBClientApp {
         frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);// Frontend server
                                                                                    // implementation.
         System.out.println(
-                "I'm user" + lastChar + " and I am connected to the server running in port number " + serverPort);
+                "I'm user" + lastChar + " and I am connected to the server running in port number " + serverPort + ".");
 
-        /*---------------------------------- Registration into the server ----------------------------------*/
-        OpenAccountResponse response = null;
-
-        try {
-            response = frontend.openAccount(encodedPublicKey);
-            publicKeyString = response.getPublicKey();
-            System.out.println(response.getResponse());
-        } catch (ManipulatedPackageException mpe) {
-            System.out.println(mpe.getMessage());
-        }
-
-        /*---------------------------------- Registration into the server ----------------------------------*/
+        /*---------------------------------- List of Commands to the server ----------------------------------*/
         System.out.println(Label.TYPE_HELP);
+        boolean doesUserHaveAccountRegistered = false;
+
         while (true) {
             String command = System.console().readLine(Label.COMMANDPROMPT);
             String[] splittedCommand = command.trim().split(" ");
@@ -142,19 +155,24 @@ public class BFTBClientApp {
             try {
                 switch (splittedCommand[0]) {
                     case "open_account":
-                        // Argument public key is predefined since each user only has one account.
-
-                        response = null;
 
                         try {
-                            System.out.println(frontend.openAccount(encodedPublicKey).getResponse());
+                            OpenAccountResponse response = frontend.openAccount(encodedPublicKey);
+                            publicKeyString = response.getPublicKey();
+                            System.out.println(response.getResponse());
+                            doesUserHaveAccountRegistered = true;
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
                         }
-
                         break;
 
                     case "send_amount":
+
+                        if (!doesUserHaveAccountRegistered) {
+                            System.out.println("You have to register an account first.");
+                            continue;
+                        }
+
                         if (splittedCommand.length != 3) {
                             System.out.println(Label.INVALID_ARGS_SND_AMT);
                             continue;
@@ -171,13 +189,19 @@ public class BFTBClientApp {
                         break;
 
                     case "check_account":
+
+                        if (!doesUserHaveAccountRegistered) {
+                            System.out.println("You have to register an account first.");
+                            continue;
+                        }
+
                         if (splittedCommand.length != 2) {
                             System.out.println(Label.INVALID_ARGS_CHECK_ACCOUNT);
                             continue;
                         }
                         CheckAccountResponse check_account_response;
                         try {
-                            check_account_response = frontend.checkAccount(splittedCommand[1]);
+                            check_account_response = frontend.checkAccount(splittedCommand[1], publicKeyString);
                             System.out.println(Label.BALANCE + check_account_response.getBalance());
                             for (String pendingTransaction : check_account_response.getPendingList()) {
                                 System.out.println(pendingTransaction);
@@ -190,6 +214,12 @@ public class BFTBClientApp {
                         break;
 
                     case "receive_amount":
+
+                        if (!doesUserHaveAccountRegistered) {
+                            System.out.println("You have to register an account first.");
+                            continue;
+                        }
+
                         if (splittedCommand.length != 4) {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT);
                             continue;
@@ -210,6 +240,12 @@ public class BFTBClientApp {
                         break;
 
                     case "audit":
+
+                        if (!doesUserHaveAccountRegistered) {
+                            System.out.println("You have to register an account first.");
+                            continue;
+                        }
+
                         if (splittedCommand.length != 2) {
                             System.out.println(Label.INVALID_ARGS_AUDIT);
                             continue;
@@ -217,7 +253,7 @@ public class BFTBClientApp {
 
                         List<String> list = null;
                         try {
-                            list = frontend.audit(splittedCommand[1]).getSetList();
+                            list = frontend.audit(splittedCommand[1], publicKeyString).getSetList();
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
                         }
@@ -228,8 +264,14 @@ public class BFTBClientApp {
                         break;
 
                     case "search_keys":
+
+                        if (!doesUserHaveAccountRegistered) {
+                            System.out.println("You have to register an account first.");
+                            continue;
+                        }
+
                         System.out.println("List of public keys available:");
-                        List<String> list_search_keys = frontend.searchKeys().getResultList();
+                        List<String> list_search_keys = frontend.searchKeys(publicKeyString).getResultList();
 
                         for (String publicKeyList : list_search_keys) {
                             int id = Integer.parseInt(publicKeyList.substring(publicKeyList.length() - 1));
@@ -251,10 +293,14 @@ public class BFTBClientApp {
                         System.out.println(Label.INVALIDCOMMAND);
 
                 }
-
-            } catch (ZooKeeperServer.MissingSessionException e) {// This is where the exceptions from grpc are caught.
+            } catch (StatusRuntimeException sre) {// This is where the exceptions from grpc are caught.
+                System.out.println(sre.getMessage());
+            }
+            catch (DetectedReplayAttackException drae) {
+                System.out.println(drae.getMessage());
+            }
+            catch (ZooKeeperServer.MissingSessionException e) {
                 try {
-                    zkNaming.unbind(mainPath + "/Server" + serverLastChar, serverInfo);
 
                     zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
 
@@ -266,7 +312,6 @@ public class BFTBClientApp {
                     serverPort = Integer.parseInt(splittedServerInfo[1]);
                     serverLastChar = serverInfo.charAt(serverInfo.length() - 1);
                     frontend.setNewTarget(serverHost,serverPort);
-                    //frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);
 
                     System.out.println("\nServer died.\nConnecting to another replica...");
                     System.out.println(
@@ -274,12 +319,12 @@ public class BFTBClientApp {
 
                 } catch (ZKNamingException e1) {
                     System.out.println("Error while trying to connect to other replica.");
-                } catch (Exception e2) {
-                    e2.getStackTrace(); // add a case error
                 }
 
             } catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
+            } catch (ManipulatedPackageException e) {
+                e.printStackTrace();
             }
 
         }

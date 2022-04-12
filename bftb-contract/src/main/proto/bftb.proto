@@ -6,6 +6,42 @@ package pt.tecnico.bftb.grpc;
 
 /*----------------------------- Requests & Responses ------------------------------*/
 
+/*-------------------- Protocol Messages ---------------------*/
+message NonceRequest{
+  bytes senderKey = 1;
+}
+
+message NonceResponse{
+  int32 nonce = 2;
+}
+/*-------------------- Read Operations ---------------------*/
+message CheckAccountRequest{
+  bytes key = 1;
+  string userKey = 2; // Needed so that server knows what is the nonce the user.
+}
+
+message CheckAccountResponse{
+  int32 balance = 1;
+  repeated string pending= 2;
+}
+
+message AuditRequest{
+  bytes key = 1;
+  string userKey = 2; // Needed so that server knows what is the nonce the user.
+}
+
+message AuditResponse{
+  repeated string set = 1;
+}
+
+message SearchKeysRequest{
+  string userKey = 1; // Needed so that server knows what is the nonce the user.
+}
+
+message SearchKeysResponse{
+  repeated string result = 1;
+}
+/*-------------------- Write Operations ---------------------*/
 message OpenAccountRequest{
   bytes key = 1;
 }
@@ -13,6 +49,7 @@ message OpenAccountRequest{
 message OpenAccountResponse{
   string response = 1;
   string publicKey = 2;
+  bytes serverPublicKey = 3;// to verify server digital signature in the library
 }
 
 message SendAmountRequest{
@@ -23,27 +60,11 @@ message SendAmountRequest{
 
 message SendAmountResponse{
   string response = 1;
-}
-
-message CheckAccountRequest{
-  bytes key = 1;
-}
-
-message CheckAccountResponse{
-  int32 balance = 1;
-  repeated string pending= 2;
-}
-
-message AuditRequest{
-  bytes key = 1;
-}
-
-message AuditResponse{
-  repeated string set = 1;
+  bytes serverPublicKey = 2;// to verify server digital signature in the library
 }
 
 message ReceiveAmountRequest{
-  string receiverKey = 1;
+  string receiverKey = 1;// This key is the userKey since he can be the only one to accept the transaction.
   string senderKey = 2;
   int32 transactionId = 3;
   bool answer = 4;//true for accept and false for reject
@@ -51,22 +72,15 @@ message ReceiveAmountRequest{
 
 message ReceiveAmountResponse{
   string result = 1;
+  bytes serverPublicKey = 2;// to verify server digital signature in the library
 }
 
-message SearchKeysRequest{}
+//---------------- Encrypted Structures --------------//
 
-message SearchKeysResponse{
-  repeated string result = 1;
-}
-
-message EncryptedMessage{
-  string encryptedmessage = 1;
-}
-
-//------------------------------------------- encrypted structure --------------------//
 message EncryptedStruck{
-  bytes digitalSignature = 1;
-  RawData rawData = 2;
+  bytes digitalSignature = 1;// for write operations
+  bytes digest = 2;// for read operations
+  RawData rawData = 3;
 }
 
 message RawData{
@@ -85,17 +99,7 @@ message RawData{
   SearchKeysResponse searchKeyResponse = 13;
 }
 
-/*----------------------------- Requests & Responses ------------------------------*/
-
-message NonceRequest{
-  bytes senderKey = 1;
-}
-
-message NonceResponse{
-  int32 nonce = 2;
-}
-
-/*------------------------------------ service ------------------------------------*/
+/*------------------------------------ Services ------------------------------------*/
 
 service BFTB{
   rpc getNonce (NonceRequest) returns (NonceResponse);
@@ -104,12 +108,5 @@ service BFTB{
   rpc checkAccount(EncryptedStruck) returns (EncryptedStruck);
   rpc audit(EncryptedStruck) returns (EncryptedStruck);
   rpc receiveAmount(EncryptedStruck) returns (EncryptedStruck);
-  rpc searchKeys(SearchKeysRequest) returns (SearchKeysResponse);
+  rpc searchKeys(EncryptedStruck) returns (EncryptedStruck);
 }
-
-/*------------------------------------ service ------------------------------------*/
-
-
-
-
-

@@ -30,6 +30,8 @@ public interface Label {
 
   String CLIENT_NAME = "Name of the user who owns the account: ";
 
+  String PASSWORD = "Password: ";
+
   String COMMANDPROMPT = "Insert a command: ";
 
   String INVALID_ARGS_AUDIT = "Invalid number of arguments. Format is:[audit PublicKey].";

@@ -22,4 +22,5 @@ public interface Label {
     String SUCCESS = "SUCCESS";
     String ERROR_TRANSACTION_TIMEOUT = "Database timeout expired for transaction.";
     String ERROR_TRANSACTION = "An unexpected error occurred in the database.";
+    String REPLAY_ATTACK = "Nonce verification failed. Message received does not hold property freshness.";
 }
