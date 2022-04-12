@@ -1,6 +1,5 @@
 package pt.tecnico.bftb.client;
 
-import java.io.IOException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
@@ -42,6 +41,7 @@ public class BFTBFrontend {
 
     public void setNewTarget(String host, int port) {
         _target = host + ":" + port;
+        _channel.shutdown();
         _channel = ManagedChannelBuilder.forTarget(_target).usePlaintext().build();
     }
 
@@ -50,101 +50,181 @@ public class BFTBFrontend {
         return BFTBGrpc.newBlockingStub(_channel);
     }
 
-    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException {
+    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
 
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
-        NonceResponse nonce = stub.getNonce(_library.getNonce(encodedPublicKey));
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(encodedPublicKey);
 
-        EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce());
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
 
-        EncryptedStruck encryptedResponse = stub.openAccount(encryptedRequest);
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-        return _library.openAccountResponse(encryptedResponse);
+            EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce());
+
+            EncryptedStruck encryptedResponse = stub.openAccount(encryptedRequest);
+
+            return _library.openAccountResponse(encryptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
+            }
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
+                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            }
+        }
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey, int amount)
-            throws ManipulatedPackageException, DetectedReplayAttackException{
-
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+            throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
         
-        NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(senderPublicKey.getBytes())));
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
-        EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount, nonce.getNonce());
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(ByteString.copyFrom(senderPublicKey.getBytes()));
 
-        EncryptedStruck encryptedResponse = stub.sendAmount(encryptedRequest);
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
 
-        return _library.sendAmountResponse(encryptedResponse);
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
+
+            EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount, nonce.getNonce());
+
+            EncryptedStruck encryptedResponse = stub.sendAmount(encryptedRequest);
+
+            return _library.sendAmountResponse(encryptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
+            }
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
+                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            }
+        }
     }
 
     public CheckAccountResponse checkAccount(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException
-            ,ZooKeeperServer.MissingSessionException, DetectedReplayAttackException{
+            , ZooKeeperServer.MissingSessionException, DetectedReplayAttackException, StatusRuntimeException {
 
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
-        ByteString dstPublicBytes = ByteString.copyFrom(dstPublicKey.getBytes());
-        ByteString userPublicBytes = ByteString.copyFrom(userPublicKey.getBytes());
+            ByteString dstPublicBytes = ByteString.copyFrom(dstPublicKey.getBytes());
+            ByteString userPublicBytes = ByteString.copyFrom(userPublicKey.getBytes());
 
-        NonceResponse nonce = stub.getNonce(_library.getNonce(userPublicBytes));
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(userPublicBytes);
 
-        EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce(),userPublicKey);
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
 
-        EncryptedStruck encriptedResponse = null;
-        //try {
-        encriptedResponse = stub.checkAccount(encriptedRequest);
-        //}
-        /*catch (StatusRuntimeException sre) {
-            if (sre.getStatus().equals(Status.UNAVAILABLE) || sre.getMessage().equals("io exception")) {
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
+
+            EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce(),userPublicKey);
+
+            EncryptedStruck encriptedResponse = null;
+
+            encriptedResponse = stub.checkAccount(encriptedRequest);
+
+            return _library.checkAccountResponse(encriptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
+            }
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
                 throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
             }
-            else if (!sre.getStatus().equals(Status.UNAVAILABLE)) {
-                throw new StatusRuntimeException(sre.getStatus());
+        }
+    }
+
+    public AuditResponse audit(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
+
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+
+            ByteString dstPublicBytes = ByteString.copyFrom(dstPublicKey.getBytes());
+            ByteString userPublicBytes = ByteString.copyFrom(userPublicKey.getBytes());
+
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(userPublicBytes);
+
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
+
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
+
+            EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(), userPublicKey);
+
+            EncryptedStruck encryptedResponse = stub.audit(encryptedRequest);
+
+            return _library.auditResponse(encryptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
             }
-
-        }*/
-        return _library.checkAccountResponse(encriptedResponse);
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
+                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            }
+        }
     }
 
-    public AuditResponse audit(String dstPublicKey,String userPublicKey) throws ManipulatedPackageException, DetectedReplayAttackException {
+    public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
 
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
-        ByteString dstPublicBytes = ByteString.copyFrom(dstPublicKey.getBytes());
-        ByteString userPublicBytes = ByteString.copyFrom(userPublicKey.getBytes());
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(ByteString.copyFrom(receiverPublicKey.getBytes()));
 
-        NonceResponse nonce = stub.getNonce(_library.getNonce(userPublicBytes));
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
 
-        EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(),userPublicKey);
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-        EncryptedStruck encryptedResponse = stub.audit(encryptedRequest);
+            EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept, nonce.getNonce());
 
-        return _library.auditResponse(encryptedResponse);
+            EncryptedStruck encryptedResponse = stub.receiveAmount(encryptedRequest);
+
+            return _library.receiveAmountResponse(encryptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
+            }
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
+                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            }
+        }
     }
 
-    public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId, boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException{
-
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
-
-        NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(receiverPublicKey.getBytes())));
-
-
-        EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept, nonce.getNonce());
-
-        EncryptedStruck encryptedResponse = stub.receiveAmount(encryptedRequest);
-
-        return _library.receiveAmountResponse(encryptedResponse);
-    }
-
-    public SearchKeysResponse searchKeys(String userPublicKeyString) throws ManipulatedPackageException, DetectedReplayAttackException {
+    public SearchKeysResponse searchKeys(String userPublicKeyString) throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException {
         
-        BFTBGrpc.BFTBBlockingStub stub = StubCreator();
+        try {
+            BFTBGrpc.BFTBBlockingStub stub = StubCreator();
 
-        NonceResponse nonce = stub.getNonce(_library.getNonce(ByteString.copyFrom(userPublicKeyString.getBytes())));
+            EncryptedStruck encryptedRequestNonce = _library.getNonce(ByteString.copyFrom(userPublicKeyString.getBytes()));
 
-        EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(),userPublicKeyString);
+            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
 
-        EncryptedStruck encryptedResponse = stub.searchKeys(encryptedRequest);
+            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-        return _library.searchKeysResponse(encryptedResponse);
+            EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString);
+
+            EncryptedStruck encryptedResponse = stub.searchKeys(encryptedRequest);
+
+            return _library.searchKeysResponse(encryptedResponse);
+        }
+        catch (io.grpc.StatusRuntimeException e) {
+            if (e.getStatus().getCode().value() != 14){ // Enters here for every other exception thrown in ServerImpl.
+                throw new StatusRuntimeException(Status.fromThrowable(e));
+            }
+            else {// Error code for UNAVAILABLE: io exception
+                // Enters here when the replica the server was connected to crashes.
+                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            }
+        }
     }
 }

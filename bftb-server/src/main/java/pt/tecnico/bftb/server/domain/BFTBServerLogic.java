@@ -24,6 +24,12 @@ public class BFTBServerLogic {
     private final static SecureRandom randomGenerator = new SecureRandom();
 
     public synchronized int newNonce(ByteString publicKey) {
+        // If a man in the middle wanted to brute force to find the nonce, it would take him
+        // 2**32 server responses to generate which ultimately for our problem at hands
+        // is much much more than the time needed.
+        // Also, the probability of two nonces colliding is very very low since they are almost
+        // perfectly random.
+
         int nonce = randomGenerator.nextInt();
         PublicKey pubKey = null;
 

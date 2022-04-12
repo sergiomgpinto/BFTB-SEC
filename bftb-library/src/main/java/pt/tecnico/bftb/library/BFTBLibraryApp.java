@@ -10,7 +10,6 @@ import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
 import pt.tecnico.bftb.cripto.BFTBCripto;
-import pt.tecnico.bftb.grpc.Bftb;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
@@ -24,9 +23,9 @@ import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountRequest;
 import pt.tecnico.bftb.grpc.Bftb.SendAmountResponse;
-import pt.tecnico.bftb.grpc.Bftb.SearchKeysRequest;
 import pt.tecnico.bftb.grpc.Bftb.SearchKeysResponse;
 import pt.tecnico.bftb.grpc.Bftb.RawData;
+import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 
 public class BFTBLibraryApp {
 
@@ -40,11 +39,58 @@ public class BFTBLibraryApp {
     }
 
     /**************************** Protocol Messages ***********************************/
-    //getNonce
-    public NonceRequest getNonce(ByteString encodedPublicKey) {
-        return NonceRequest.newBuilder().setSenderKey(encodedPublicKey).build();
+    // getNonce
+    // The nonce interchange is a write operations therefore will be signed.
+
+    public EncryptedStruck getNonce(ByteString encodedPublicKey) {
+
+        NonceRequest request = NonceRequest
+                                .newBuilder()
+                                .setSenderKey(encodedPublicKey)
+                                .build();
+
+        RawData rawData = RawData.newBuilder()
+                .setNonceRequest(request)
+                .build();
+
+        byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
+
+        ByteString digitalSignature = ByteString.copyFrom(BFTBCripto.digitalSign(BFTBCripto.hash(rawDataBytes), _userPrivateKey));
+
+        return EncryptedStruck.newBuilder()
+                .setDigitalSignature(digitalSignature)
+                .setRawData(rawData)
+                .build();
     }
 
+    public NonceResponse getNonceResponse(EncryptedStruck response) throws ManipulatedPackageException,DetectedReplayAttackException{
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().toByteArray()).getBytes());
+
+        PublicKey publicKey = null;
+
+        try {
+            publicKey = KeyFactory.getInstance("RSA")
+                    .generatePublic(new X509EncodedKeySpec(response.getRawData().getNonceResponse().getServerPublicKey().toByteArray()));
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        byte[] decryptedHash = BFTBCripto.decryptDigitalSignature(response.getDigitalSignature().toByteArray(), publicKey);
+
+        NonceResponse nonceResponse = response.getRawData().getNonceResponse();
+
+        boolean isCorrect = Arrays.equals(calculatedHash, decryptedHash);
+
+        if (!isCorrect) {
+            throw new ManipulatedPackageException("Either package was tempered or a older server response" +
+                    " was sent.");
+        }
+
+        return NonceResponse.newBuilder()
+                .setNonce(nonceResponse.getNonce())
+                .build();
+    }
     /**************************** Read Only Operations ***********************************/
     // checkAccount
     // audit
@@ -90,7 +136,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
         return CheckAccountResponse.newBuilder().setBalance(accResponse.getBalance()).addAllPending(accResponse.getPendingList()).build();
@@ -136,7 +182,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
 
@@ -181,7 +227,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
         return SearchKeysResponse.newBuilder().addAllResult(searchKeysResponse.getResultList()).build();
@@ -243,7 +289,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
         return OpenAccountResponse.newBuilder().setPublicKey(accResponse.getPublicKey())
@@ -304,7 +350,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
         return SendAmountResponse.newBuilder().setResponse(accResponse.getResponse())
@@ -366,7 +412,7 @@ public class BFTBLibraryApp {
         int receivedNonce = response.getRawData().getNonce();
         if (_nonce != receivedNonce) {
             throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                    "Message received doe snot hold proterty of freshness");
+                    "Message received doe snot hold property of freshness");
         }
 
         return ReceiveAmountResponse.newBuilder().setResult(accResponse.getResult()).build();

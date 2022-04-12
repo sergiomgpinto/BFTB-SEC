@@ -29,16 +29,16 @@
             <artifactId>bftb-contract</artifactId>
             <version>1.0.0-SNAPSHOT</version>
         </dependency>
-      <dependency>
-          <groupId>pt.ulisboa.tecnico.sdis</groupId>
-          <artifactId>zk-naming</artifactId>
-          <version>1.0.3</version>
-      </dependency>
-      <dependency>
+        <dependency>
+              <groupId>pt.ulisboa.tecnico.sdis</groupId>
+              <artifactId>zk-naming</artifactId>
+              <version>1.0.3</version>
+        </dependency>
+        <dependency>
           <groupId>${project.groupId}</groupId>
           <artifactId>bftb-cripto</artifactId>
           <version>1.0.0-SNAPSHOT</version>
-      </dependency>
+        </dependency>
     </dependencies>
     <build>
         <resources>
