@@ -327,6 +327,9 @@ public class BFTBClientApp {
             } catch (ManipulatedPackageException e) {
                 e.printStackTrace();
             }
+            catch (PacketDropAttack pda) {
+                System.out.println(pda.getMessage());
+            }
 
         }
 

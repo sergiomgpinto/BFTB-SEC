@@ -50,4 +50,6 @@ public interface Label {
       "transactionId answer]. Answer \"yes\" to accept transaction or \"no\" to reject.";
 
   String INVALID_ARGS_RCV_AMOUNT_ANSWER = "Argument answer must be either \"yes\" or \"no\".";
+
+  String PACKET_DROP_ATTACK = "Client packets are being dropped.";
 }
