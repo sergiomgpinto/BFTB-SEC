@@ -3,36 +3,19 @@ package pt.tecnico.bftb.server;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.UnrecoverableEntryException;
 import java.security.KeyStore.PrivateKeyEntry;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
-import java.security.KeyPair;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-
 import pt.ulisboa.tecnico.sdis.zk.ZKNaming;
 import pt.ulisboa.tecnico.sdis.zk.ZKNamingException;
-import pt.ulisboa.tecnico.sdis.zk.ZKRecord;
-
-import com.google.protobuf.ByteString;
-
-import io.grpc.StatusRuntimeException;
-import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
-import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -77,7 +60,10 @@ public class BFTBServerApp {
                 }
             }
         });
-        String serverName = System.console().readLine(Label.SERVERNAME);
+
+        Scanner scanner = new Scanner(System.in);
+        String serverName = scanner.nextLine();
+
         char lastChar = serverName.charAt(serverName.length() - 1);
         port = "808" + lastChar;
         finalPath = mainPath + "/Server" + lastChar;
@@ -121,13 +107,6 @@ public class BFTBServerApp {
         Server server = ServerBuilder.forPort(Integer.parseInt(port)).addService(impl).build();
 
         server.start();
-
-        new Thread(() -> {
-            System.out.println("<Press enter to shutdown>");
-            new Scanner(System.in).nextLine();
-
-            server.shutdown();
-        }).start();
 
         server.awaitTermination();
         } catch (FileNotFoundException | NoSuchAlgorithmException | UnrecoverableEntryException | CertificateException
