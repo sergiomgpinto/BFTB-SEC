@@ -71,6 +71,12 @@ public class BFTBClientApp {
 
         String publicKeyString = null;
         String name = System.console().readLine(Label.CLIENT_NAME);
+
+        while (!name.replaceAll("[0-9]","").equals("user")) {
+            System.out.println("Please insert a valid username.");
+            name = System.console().readLine(Label.CLIENT_NAME);
+        }
+
         char lastChar = name.charAt(name.length() - 1);
 
         int counter = 3; // User has 3 attempts to provide correct password.
@@ -133,7 +139,10 @@ public class BFTBClientApp {
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
         } catch (Exception e) {
-            System.out.println(e);
+            System.out.println("There isn't a public key pair registered in the system for this user.");
+            System.out.println("User authentication failed.");
+            System.out.println("Closing...");
+            return;
         }
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
@@ -156,7 +165,7 @@ public class BFTBClientApp {
                     case "open_account":
 
                         try {
-                            OpenAccountResponse response = frontend.openAccount(encodedPublicKey);
+                            OpenAccountResponse response = frontend.openAccount(encodedPublicKey,name);
                             publicKeyString = response.getPublicKey();
                             System.out.println(response.getResponse());
                             doesUserHaveAccountRegistered = true;

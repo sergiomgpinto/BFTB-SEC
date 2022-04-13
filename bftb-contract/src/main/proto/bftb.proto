@@ -45,6 +45,7 @@ message SearchKeysResponse{
 /*-------------------- Write Operations ---------------------*/
 message OpenAccountRequest{
   bytes key = 1;
+  string username = 2;
 }
 
 message OpenAccountResponse{

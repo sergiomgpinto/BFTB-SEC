@@ -51,7 +51,7 @@ public class BFTBFrontend {
 
     }
 
-    public OpenAccountResponse openAccount(ByteString encodedPublicKey) throws ManipulatedPackageException
+    public OpenAccountResponse openAccount(ByteString encodedPublicKey, String username) throws ManipulatedPackageException
             , DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
 
         try {
@@ -63,7 +63,7 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce());
+            EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce(), username);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
