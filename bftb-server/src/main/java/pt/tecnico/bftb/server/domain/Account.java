@@ -15,21 +15,16 @@ public class Account {
     private final String _publicKeyString;
     static final String NOT_ENOUGH_BALANCE = "Account has no sufficient funds to execute transaction.";
     static final String SUCCESS_TRANSACTION = "Transaction executed with success";
-
+    private final String _username;
     ArrayList<Transaction> _transactions = new ArrayList<>();
     ArrayList<Pending> _pending = new ArrayList<>();
 
-    public Account(PublicKey publicKey, int number_of_accounts) {
+    public Account(PublicKey publicKey, int number_of_accounts, String username) {
         _balance = 1000;
         _publicKey = publicKey;
-        _publicKeyString = "PublicKey" + String.valueOf(number_of_accounts);
+        _publicKeyString = "PublicKey" + username.replaceAll("\\D+","");
+        _username = username;
 
-    }
-
-    public Account(int balance, String publicKeyString, PublicKey publicKey) {
-        _balance = balance;
-        _publicKeyString = publicKeyString;
-        _publicKey = publicKey;
     }
 
     public int getBalance() {

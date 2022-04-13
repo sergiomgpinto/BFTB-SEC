@@ -238,12 +238,13 @@ public class BFTBLibraryApp {
     // sendAmount
     // receiveAmount
 
-    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce) {
+    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce, String username) {
 
         this._nonce = nonce;
 
         OpenAccountRequest openAccountRequest = OpenAccountRequest.newBuilder()
                 .setKey(encodedPublicKey)
+                .setUsername(username)
                 .build();
 
         RawData rawData = RawData.newBuilder()

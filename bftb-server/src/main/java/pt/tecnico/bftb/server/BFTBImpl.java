@@ -64,7 +64,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         PublicKey publicKey = null;
         NonceResponse response = null;
-
+        System.out.println(request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8));
         try {
             if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
                 try {
@@ -84,9 +84,11 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
                         .toByteArray()));
             }
         } catch (NoSuchAlgorithmException nsae) {
+            System.out.println("entrei");
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
             return;
         } catch (InvalidKeySpecException ikpe) {
+            System.out.println("entre2");
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
             return;
         }
@@ -364,18 +366,20 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         try {
-            String ret = _bftb.openAccount(request.getRawData().getOpenAccountRequest().getKey());
+            String ret = _bftb.openAccount(request.getRawData().getOpenAccountRequest().getKey(),
+                    request.getRawData().getOpenAccountRequest().getUsername());
 
             String[] values = ret.split(":");
             OpenAccountResponse accountResponse = null;
 
-            if (ret.indexOf(":") != -1) {
+            if (ret.indexOf(":") != -1) {// Enters here if user had not registered an account yet.
                 accountResponse = OpenAccountResponse.newBuilder().setResponse(values[0])
                         .setPublicKey(values[1])
                         .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                         .build();
-            } else {
+            } else {// Enters here if user has already a registered account.
                 accountResponse = OpenAccountResponse.newBuilder().setResponse(ret)
+                        .setPublicKey(_bftb.searchAccount(publicKey).getPublicKeyString())
                         .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                         .build();
             }
@@ -391,6 +395,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onCompleted();
         } catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
+        } catch (NonExistentAccount nea) {
+           System.out.println(nea.getMessage());
         }
     }
 

@@ -70,7 +70,7 @@ public class BFTBServerLogic {
         return nonce;
     }
 
-    public synchronized String openAccount(ByteString key) throws InvalidKeySpecException, NoSuchAlgorithmException {
+    public synchronized String openAccount(ByteString key, String username) throws InvalidKeySpecException, NoSuchAlgorithmException {
         PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
 
         // This function is restricting one account per user.
@@ -81,7 +81,7 @@ public class BFTBServerLogic {
         }
 
         _number_of_accounts += 1;
-        Account account = new Account(publicKey, _number_of_accounts);
+        Account account = new Account(publicKey, _number_of_accounts,username);
         _accounts.add(account);
         String publicKeyString = account.getPublicKeyString();
 
