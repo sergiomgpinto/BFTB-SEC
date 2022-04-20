@@ -87,20 +87,22 @@ message EncryptedStruck{
 
 message RawData{
   int32 nonce = 1;
-  OpenAccountRequest openAccountRequest = 2;
-  OpenAccountResponse openAccountResponse = 3;
-  SendAmountRequest sendAmountRequest = 4;
-  SendAmountResponse sendAmountResponse = 5;
-  CheckAccountRequest checkAccountRequest = 6;
-  CheckAccountResponse checkAccountResponse = 7;
-  AuditRequest auditRequest = 8;
-  AuditResponse auditResponse = 9;
-  ReceiveAmountRequest receiveAmountRequest = 10;
-  ReceiveAmountResponse receiveAmountResponse = 11;
-  SearchKeysRequest searchKeyRequest = 12;
-  SearchKeysResponse searchKeyResponse = 13;
-  NonceRequest nonceRequest = 14;
-  NonceResponse nonceResponse = 15;
+  oneof request { // This guarantees at most one field can be set at the same time.
+    OpenAccountRequest openAccountRequest = 2;
+    OpenAccountResponse openAccountResponse = 3;
+    SendAmountRequest sendAmountRequest = 4;
+    SendAmountResponse sendAmountResponse = 5;
+    CheckAccountRequest checkAccountRequest = 6;
+    CheckAccountResponse checkAccountResponse = 7;
+    AuditRequest auditRequest = 8;
+    AuditResponse auditResponse = 9;
+    ReceiveAmountRequest receiveAmountRequest = 10;
+    ReceiveAmountResponse receiveAmountResponse = 11;
+    SearchKeysRequest searchKeyRequest = 12;
+    SearchKeysResponse searchKeyResponse = 13;
+    NonceRequest nonceRequest = 14;
+    NonceResponse nonceResponse = 15;
+  }
 }
 
 /*------------------------------------ Services ------------------------------------*/

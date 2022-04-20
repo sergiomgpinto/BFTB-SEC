@@ -19,12 +19,21 @@ public class Account {
     ArrayList<Transaction> _transactions = new ArrayList<>();
     ArrayList<Pending> _pending = new ArrayList<>();
 
-    public Account(PublicKey publicKey, int number_of_accounts, String username) {
+    //Constructor used when server is running normally.
+    public Account(PublicKey publicKey, String username) {
         _balance = 1000;
         _publicKey = publicKey;
         _publicKeyString = "PublicKey" + username.replaceAll("\\D+","");
         _username = username;
 
+    }
+
+    //Constructor used when recovering state from database.
+    public Account(int balance, String publicKeyString, PublicKey publicKey, String username) {
+        _balance = balance;
+        _publicKeyString = publicKeyString;
+        _publicKey = publicKey;
+        _username = username;
     }
 
     public int getBalance() {

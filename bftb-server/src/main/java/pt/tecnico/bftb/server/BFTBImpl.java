@@ -64,7 +64,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         PublicKey publicKey = null;
         NonceResponse response = null;
-        System.out.println(request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8));
         try {
             if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
                 try {
@@ -84,11 +83,9 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
                         .toByteArray()));
             }
         } catch (NoSuchAlgorithmException nsae) {
-            System.out.println("entrei");
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
             return;
         } catch (InvalidKeySpecException ikpe) {
-            System.out.println("entre2");
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
             return;
         }
@@ -397,6 +394,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
         } catch (NonExistentAccount nea) {
            System.out.println(nea.getMessage());
+        } catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
     }
 
@@ -472,7 +471,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         try {
 
             SendAmountResponse ret = SendAmountResponse.newBuilder()
-                    .setResponse(_bftb.sendAmount(senderKey, receiverKey, amount))
+                    .setResponse(_bftb.sendAmount(senderKey, receiverKey, amount,request.getDigitalSignature()))
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
             
@@ -488,6 +487,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
         } catch (NoAccountException nae) {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
+        } catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
     }
 
@@ -559,7 +560,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         try {
             ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
-                    .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer))
+                    .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer
+                            ,request.getDigitalSignature()))
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 
@@ -579,6 +581,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(net.getMessage()).asRuntimeException());
         } catch (NoAuthorization na) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(na.getMessage()).asRuntimeException());
+        } catch (BFTBDatabaseException bde) {
+            responseObserver.onError(ABORTED.withDescription(bde.getMessage()).asRuntimeException());
         }
     }
 
