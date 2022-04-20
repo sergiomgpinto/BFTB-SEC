@@ -17,12 +17,154 @@ import java.util.List;
 
 public class BFTBServerLogic {
 
+    // Driver that allows connection to database.
     private BFTBMySqlDriver mySqlDriver = new BFTBMySqlDriver();
+    // Set of all accounts in the system.
     HashSet<Account> _accounts = new HashSet<>();
-    HashMap<PublicKey, Integer> nonces = new HashMap<>();
+    // Set of all nonces in the system. Each user with its public key has only one nonce.
+    HashMap<PublicKey, Integer> _nonces = new HashMap<>();
+
     private int _number_of_accounts = 0;
+    // Provider of function to generate randomly nonce.
     private final static SecureRandom randomGenerator = new SecureRandom();
 
+    public BFTBServerLogic() {
+        recoverBFTBServerState();
+    }
+
+    /*************************************Getters***********************************/
+
+    /**
+     * @return the nonce stored for the given user.
+     */
+    public int getUserNonce(String publicKey) {
+
+        Account account = null;
+        int nonce = 0;
+
+        try {
+            account = searchAccount(publicKey);
+            PublicKey pubKey = account.getPublicKey();
+            synchronized (this) {
+                nonce = _nonces.get(pubKey);
+            }
+        }
+        catch (NonExistentAccount nea) {
+            //Should never happen.
+        }
+
+        return nonce;
+    }
+
+    /**
+     * @return all public keys in string format.
+     */
+    public synchronized List<String> getAllPublicKeys() {
+        List<String> result = new ArrayList<>();
+
+        for (Account account : _accounts) {
+            result.add(account.getPublicKeyString());
+        }
+        return result;
+    }
+
+    /**
+     * @return a specific account with given string key.
+     */
+    public synchronized Account searchAccount(String key) throws NonExistentAccount {
+        for (Account account : _accounts) {
+            if (account.getPublicKeyString().equals(key)) {// Account already exists.
+                return account;
+            }
+        }
+        throw new NonExistentAccount(Label.ERR_NO_ACC);
+    }
+
+    /**
+     * @return a specific account with given public key.
+     */
+    public synchronized Account searchAccount(PublicKey key) throws NonExistentAccount {
+        for (Account account : _accounts) {
+            if (account.getPublicKey().equals(key)) {// Account already exists.
+                return account;
+            }
+        }
+        throw new NonExistentAccount(Label.ERR_NO_ACC);
+    }
+
+    /*************************************Setters***********************************/
+
+
+
+    /***********************READ OPERATIONS****************/
+
+    /**
+     * @return all concluded transactions from given string format key user.
+     */
+    public List<String> audit(String key)
+            throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount{
+
+        List<String> set = new ArrayList<>();
+        boolean ACCOUNT_FOUND = false;
+
+        synchronized (this) {
+            for (Account account : _accounts) {
+                String publicKey = account.getPublicKeyString();
+                if (key.equals(publicKey)) {
+                    // Account found.
+                    ACCOUNT_FOUND = true;
+                    List<Transaction> transactions = account.getTransactions();
+
+                    for (Transaction transaction : transactions) {
+                        set.add(transaction.toString());
+                    }
+                }
+            }
+            if (!ACCOUNT_FOUND) {
+                throw new NonExistentAccount(Label.ERR_NO_ACC);
+            }
+        }
+        return set;
+    }
+
+    /**
+     * @return pending transactions for given string format key user.
+     */
+    public List<String> checkAccount(String key)
+            throws NonExistentAccount {
+
+        List<String> ret = new ArrayList<>();
+        boolean ACCOUNT_FOUND = false;
+        Account owner_account = null;
+
+        synchronized (this) {
+            for (Account account : _accounts) {
+                if (account.getPublicKeyString().equals(key)) {// Account found.
+                    ACCOUNT_FOUND = true;
+                    owner_account = account;
+                    ret.add(String.valueOf(account.getBalance()));
+                }
+            }
+        }
+
+        // Account not found.
+        if (!ACCOUNT_FOUND) {
+            throw new NonExistentAccount(Label.ERR_NO_ACC);
+        }
+        // Returns list of pending incoming transfers
+        for (Pending pendingTransaction : owner_account.getPending()) {
+            if (pendingTransaction.getType() == TransactionType.CREDIT) {
+                ret.add(pendingTransaction.toString(owner_account.getPublicKeyString()));
+            }
+        }
+        return ret;
+    }
+
+    /***********************WRITE OPERATIONS****************/
+
+    /**
+     * @return a new nonce for given public key user in format bytestring.
+     */
     public synchronized int newNonce(ByteString publicKey) {
         // If a man in the middle wanted to brute force to find the nonce, it would take him
         // 2**32 server responses to generate which ultimately for our problem at hands
@@ -38,32 +180,16 @@ public class BFTBServerLogic {
         } catch (Exception e) {
             // Should never happen.
         }
-        nonces.put(pubKey, nonce);
+        synchronized (this) {
+            _nonces.put(pubKey, nonce);
+        }
         return nonce;
     }
 
-    public BFTBServerLogic() {
-        recoverBFTBServerState();
-    }
-
-    public synchronized int getUserNonce(String publicKey) {
-
-        Account account = null;
-        int nonce = 0;
-
-        try {
-            account = searchAccount(publicKey);
-            PublicKey pubKey = account.getPublicKey();
-            nonce = nonces.get(pubKey);
-        }
-        catch (NonExistentAccount nea) {
-            //Should never happen.
-        }
-
-        return nonce;
-    }
-
-    public synchronized int newNonce(PublicKey publicKey) {
+    /**
+     * @return a new nonce for given public key user.
+     */
+    public int newNonce(PublicKey publicKey) {
         int nonce = randomGenerator.nextInt();
         PublicKey pubKey = null;
 
@@ -73,27 +199,34 @@ public class BFTBServerLogic {
         catch (Exception e) {
             // Should never happen.
         }
-        nonces.put(pubKey, nonce);
+        synchronized (this) {
+            _nonces.put(pubKey, nonce);
+        }
         return nonce;
     }
 
-    public synchronized String openAccount(ByteString key, String username) throws InvalidKeySpecException, NoSuchAlgorithmException, BFTBDatabaseException {
+    /**
+     * @return success if account was successfully created for given params otherwise the respective errors.
+     */
+    public String openAccount(ByteString key, String username) throws InvalidKeySpecException, NoSuchAlgorithmException, BFTBDatabaseException {
         PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
-
+        Account newAccount = null;
         // This function is restricting one account per user.
-        for (Account account : _accounts) {
-            if (account.getPublicKey().equals(publicKey)) {// Account already exists.
-                return Label.ERR_ACC_CRT;
+        synchronized (this) {
+            for (Account account : _accounts) {
+                if (account.getPublicKey().equals(publicKey)) {// Account already exists.
+                    return Label.ERR_ACC_CRT;
+                }
             }
+
+            _number_of_accounts += 1;
+            newAccount = new Account(publicKey, username);
+            _accounts.add(newAccount);
         }
+        String publicKeyString = newAccount.getPublicKeyString();
 
-        _number_of_accounts += 1;
-        Account account = new Account(publicKey,username);
-        _accounts.add(account);
-        String publicKeyString = account.getPublicKeyString();
-
-        String[] args = { String.valueOf(account.getBalance()), publicKeyString, username};
-
+        String[] args = { String.valueOf(newAccount.getBalance()), publicKeyString, username};
+        // Registers information in the database.
         String ret = mySqlDriver.dbParser("openAccount",args,publicKey,null);
 
         if (ret.equals(Label.SUCCESS)) {
@@ -103,7 +236,10 @@ public class BFTBServerLogic {
         }
     }
 
-    public synchronized String sendAmount(String senderKey, String receiverKey, int amount, ByteString digitalSignature)
+    /**
+     * @return that transaction is awaiting approval for given params otherwise the respective errors.
+     */
+    public String sendAmount(String senderKey, String receiverKey, int amount, ByteString digitalSignature)
             throws InvalidKeySpecException, NoSuchAlgorithmException, NoAccountException, BFTBDatabaseException{
 
         Account senderAccount;
@@ -143,67 +279,10 @@ public class BFTBServerLogic {
         }
     }
 
-    public synchronized List<String> audit(String key)
-            throws InvalidKeySpecException, NoSuchAlgorithmException, NonExistentAccount{
-
-        List<String> set = new ArrayList<>();
-        boolean ACCOUNT_FOUND = false;
-
-        for (Account account : _accounts) {
-            String publicKey = account.getPublicKeyString();
-            if (key.equals(publicKey)) {
-                // Account found.
-                ACCOUNT_FOUND = true;
-                List<Transaction> transactions = account.getTransactions();
-
-                for (Transaction transaction : transactions) {
-                    set.add(transaction.toString());
-                }
-            }
-        }
-        if (!ACCOUNT_FOUND) {
-            throw new NonExistentAccount(Label.ERR_NO_ACC);
-        }
-        return set;
-    }
-
-    public synchronized List<String> checkAccount(String key)
-            throws NonExistentAccount {
-
-        List<String> ret = new ArrayList<>();
-        boolean ACCOUNT_FOUND = false;
-        Account owner_account = null;
-
-        for (Account account : _accounts) {
-            if (account.getPublicKeyString().equals(key)) {// Account found.
-                ACCOUNT_FOUND = true;
-                owner_account = account;
-                ret.add(String.valueOf(account.getBalance()));
-            }
-        }
-        // Account not found.
-        if (!ACCOUNT_FOUND) {
-            throw new NonExistentAccount(Label.ERR_NO_ACC);
-        }
-        // Returns list of pending incoming transfers
-        for (Pending pendingTransaction : owner_account.getPending()) {
-            if (pendingTransaction.getType() == TransactionType.CREDIT) {
-                ret.add(pendingTransaction.toString(owner_account.getPublicKeyString()));
-            }
-        }
-        return ret;
-    }
-
-    public synchronized List<String> getAllPublicKeys() {
-        List<String> result = new ArrayList<>();
-
-        for (Account account : _accounts) {
-            result.add(account.getPublicKeyString());
-        }
-        return result;
-    }
-
-    public synchronized String receiveAmount(String receiverKey, String senderKey, int transactionId, boolean answer,
+    /**
+     * @return either transaction accepted or rejected successfully for given params otherwise respective errors.
+     */
+    public String receiveAmount(String receiverKey, String senderKey, int transactionId, boolean answer,
                                              ByteString digitalSignature)
             throws NonExistentAccount, NonExistentTransaction, NoAuthorization, BFTBDatabaseException{
 
@@ -262,6 +341,7 @@ public class BFTBServerLogic {
                     receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
                     String.valueOf(pendingTransaction.getTransactionId()) };
 
+            // Writes information to the database.
             String ret = mySqlDriver.dbParser("receiveAmount",args,null,digitalSignature);
 
             if (ret.equals(Label.SUCCESS)) {
@@ -301,7 +381,7 @@ public class BFTBServerLogic {
                     receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
                     String.valueOf(pendingTransaction.getTransactionId()),
                     String.valueOf(pendingTransaction.getAmount()), TransactionType.CREDIT.toString() };
-
+            // Writes information to the database.
             String ret = mySqlDriver.dbParser("receiveAmount",args,null, digitalSignature);
 
             if (ret.equals(Label.SUCCESS)) {
@@ -312,25 +392,10 @@ public class BFTBServerLogic {
         }
     }
 
-    public synchronized Account searchAccount(String key) throws NonExistentAccount {
-        for (Account account : _accounts) {
-            if (account.getPublicKeyString().equals(key)) {// Account already exists.
-                return account;
-            }
-        }
-        throw new NonExistentAccount(Label.ERR_NO_ACC);
-    }
-
-    public synchronized Account searchAccount(PublicKey key) throws NonExistentAccount {
-        for (Account account : _accounts) {
-            if (account.getPublicKey().equals(key)) {// Account already exists.
-                return account;
-            }
-        }
-        throw new NonExistentAccount(Label.ERR_NO_ACC);
-    }
-
-    private synchronized void recoverBFTBServerState() {
+    /**
+     * Recovers server state from database through the mySqlDriver.
+     */
+    private void recoverBFTBServerState() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
             Connection con = DriverManager.getConnection(
@@ -360,14 +425,18 @@ public class BFTBServerLogic {
                     PublicKey publicKey = KeyFactory.getInstance("RSA")
                             .generatePublic(new X509EncodedKeySpec(blobData.getBytes(1, blobLength)));
                     Account account = new Account(balance, publicKeyString, publicKey, username);
-                    _accounts.add(account);
+                    synchronized (this) {
+                        _accounts.add(account);
+                    }
                 }
                 catch (InvalidKeySpecException | NoSuchAlgorithmException e) {
                     System.out.println(e.getMessage());
                 }
 
             }
-            _number_of_accounts = _accounts.size();
+            synchronized (this) {
+                _number_of_accounts = _accounts.size();
+            }
 
             /*Recover pending transactions*/
 

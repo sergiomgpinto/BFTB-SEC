@@ -7,8 +7,13 @@ import pt.tecnico.bftb.server.domain.TransactionType;
 import java.security.PublicKey;
 import java.sql.*;
 
+// This class is the bridge between the logic domain and database domain.
 public class BFTBMySqlDriver {
 
+    /**
+     * @return success if data was successfully added to the database
+     * otherwise the respective errors.
+     */
     public String dbParser(String function, String[] args, PublicKey publicKey, ByteString digitalSignature) {
 
         try {
