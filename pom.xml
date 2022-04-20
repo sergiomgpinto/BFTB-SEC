@@ -41,6 +41,14 @@
         <module>bftb-cripto</module>
     </modules>
 
+    <dependencies>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>8.0.28</version>
+        </dependency>
+    </dependencies>
+
     <build>
         <plugins>
             <!-- Plugin to check available updates on dependencies -->
@@ -48,6 +56,29 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>versions-maven-plugin</artifactId>
                 <version>2.7</version>
+            </plugin>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>8.2.0</version>
+                <configuration>
+                    <driver>com.mysql.jdbc.Driver</driver>
+                    <url>jdbc:mysql://localhost:3306/bftbServer</url>
+                    <user>root</user>
+                    <password>password</password>
+                    <schemas>
+                        <schema>Account</schema>
+                        <schema>Pending</schema>
+                        <schema>Transaction</schema>
+                    </schemas>
+                </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>mysql</groupId>
+                        <artifactId>mysql-connector-java</artifactId>
+                        <version>8.0.28</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
