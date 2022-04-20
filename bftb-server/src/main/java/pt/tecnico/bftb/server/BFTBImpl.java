@@ -117,6 +117,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
                         .getNonceRequest().getSenderKey()
                         .toString(StandardCharsets.UTF_8)).getPublicKey()))
                         .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
+
             } catch (NonExistentAccount e) {
                 responseObserver
                         .onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
@@ -551,6 +552,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         String receiverKey = request.getRawData().getReceiveAmountRequest().getReceiverKey();
         String senderKey = request.getRawData().getReceiveAmountRequest().getSenderKey();
         int transactionId = request.getRawData().getReceiveAmountRequest().getTransactionId();
+        int wts = request.getRawData().getReceiveAmountRequest().getWts();
 
         if (receiverKey == null || receiverKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
@@ -587,7 +589,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         try {
             ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
-                    .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer))
+                    .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer, wts))
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 

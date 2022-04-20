@@ -19,28 +19,39 @@ message NonceResponse{
 message CheckAccountRequest{
   bytes key = 1;
   string userKey = 2; // Needed so that server knows what is the nonce the user.
+  int32 wts = 3;
 }
 
 message CheckAccountResponse{
   int32 balance = 1;
   repeated string pending= 2;
+  int32 wts = 3;
+
 }
 
 message AuditRequest{
   bytes key = 1;
   string userKey = 2; // Needed so that server knows what is the nonce the user.
+  int32 wts = 3;
+
 }
 
 message AuditResponse{
   repeated string set = 1;
+  int32 wts = 2;
+
 }
 
 message SearchKeysRequest{
   string userKey = 1; // Needed so that server knows what is the nonce the user.
+  int32 wts = 2;
+
 }
 
 message SearchKeysResponse{
   repeated string result = 1;
+  int32 wts = 2;
+
 }
 /*-------------------- Write Operations ---------------------*/
 message OpenAccountRequest{
@@ -52,17 +63,22 @@ message OpenAccountResponse{
   string response = 1;
   string publicKey = 2;
   bytes serverPublicKey = 3;// to verify server digital signature in the library
+  
 }
 
 message SendAmountRequest{
   string senderKey = 1;
   string receiverKey = 2;
   int32 amount = 3;
+  int32 wts = 4;
+
 }
 
 message SendAmountResponse{
   string response = 1;
   bytes serverPublicKey = 2;// to verify server digital signature in the library
+  int32 wts = 3;
+
 }
 
 message ReceiveAmountRequest{
@@ -70,11 +86,15 @@ message ReceiveAmountRequest{
   string senderKey = 2;
   int32 transactionId = 3;
   bool answer = 4;//true for accept and false for reject
+  int32 wts = 5;
+
 }
 
 message ReceiveAmountResponse{
   string result = 1;
   bytes serverPublicKey = 2;// to verify server digital signature in the library
+  int32 wts = 3;
+
 }
 
 //---------------- Encrypted Structures --------------//

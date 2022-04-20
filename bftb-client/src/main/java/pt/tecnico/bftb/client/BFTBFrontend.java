@@ -3,11 +3,18 @@ package pt.tecnico.bftb.client;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.grpc.*;
+import io.grpc.netty.shaded.io.netty.internal.tcnative.Library;
+
 import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
@@ -34,10 +41,12 @@ public class BFTBFrontend {
     final long _duration = 100;
     int ack = 0;
     int wts = 0;
+    int rid = 0;
     ZKNaming zkNaming;
     ArrayList<ZKRecord> zkRecordsList;
     String mainPath = "/nodes";
     ArrayList<BFTBGrpc.BFTBBlockingStub> stubs;
+    HashMap<String, Integer> responses;
 
     public BFTBFrontend(String zoohost, String zooport, PrivateKey privateKey, PublicKey publickey) {
         _library = new BFTBLibraryApp(privateKey, publickey);
@@ -68,9 +77,10 @@ public class BFTBFrontend {
     public OpenAccountResponse openAccount(ByteString encodedPublicKey, String username)
             throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException,
             PacketDropAttack {
-
+        responses = new HashMap<>();
         EncryptedStruck encryptedResponse = null;
         StubCreator();
+        OpenAccountResponse response = null;
 
         while (ack < 5) {
             for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
@@ -93,6 +103,14 @@ public class BFTBFrontend {
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .openAccount(encryptedRequest);
+                            wts++; // ?????????????????????????????????
+                            response = _library.openAccountResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
+                                responses.put(strResponse, 1);
+                            }
+
                             ack += 1;
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
@@ -113,29 +131,42 @@ public class BFTBFrontend {
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels();
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
-                    } else {// Error code for UNAVAILABLE: io exception
-                            // Enters here when the replica the server was connected to crashes.
-                        shutdownChannels();
-                        throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+                        shutdownChannels(); // ?????????????
+                        ack += 1;
+
+                        if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
+                            responses.put(e.getMessage(), 1);
+                        }
+                        // // throw new StatusRuntimeException(Status.fromThrowable(e));
                     }
                 }
             }
             if (ack < 5)
                 ack = 0;
         }
+
         ack = 0;
         shutdownChannels();
+        String maxEntry = null;
+        String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
-        return _library.openAccountResponse(encryptedResponse); // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
-                                                                // THE RESPONSE OF THE REPLICAS.
+        response = null;
+        try {
+            System.out.println(responses);
+            response = OpenAccountResponse.parseFrom(BaseEncoding.base64().decode(key));
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
+          // THE RESPONSE OF THE REPLICAS.
+        return response;
 
     }
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey, int amount)
             throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException,
             PacketDropAttack {
+        responses = new HashMap<>();
+        SendAmountResponse response = null;
 
         EncryptedStruck encryptedResponse = null;
         StubCreator();
@@ -160,6 +191,15 @@ public class BFTBFrontend {
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .sendAmount(encryptedRequest);
+
+                            wts++;
+                            response = _library.sendAmountResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
+                                responses.put(strResponse, 1);
+                            }
+
                             ack += 1;
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
@@ -181,11 +221,11 @@ public class BFTBFrontend {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
                         shutdownChannels();
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
-                    } else {// Error code for UNAVAILABLE: io exception
-                            // Enters here when the replica the server was connected to crashes.
-                        shutdownChannels();
-                        throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+
+                        if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
+                            responses.put(e.getMessage(), 1);
+                        }
+                        // throw new StatusRuntimeException(Status.fromThrowable(e));
                     }
                 }
             }
@@ -195,8 +235,18 @@ public class BFTBFrontend {
         }
         ack = 0;
         shutdownChannels();
+        String maxEntry = null;
+        String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
-        return _library.sendAmountResponse(encryptedResponse);
+        response = null;
+        try {
+            System.out.println(responses);
+            response = SendAmountResponse.parseFrom(BaseEncoding.base64().decode(key));
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
+          // THE RESPONSE OF THE REPLICAS.
+        return response;
 
     }
 
@@ -344,6 +394,10 @@ public class BFTBFrontend {
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
             boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException,
             ZooKeeperServer.MissingSessionException, PacketDropAttack {
+
+        responses = new HashMap<>();
+        ReceiveAmountResponse response = null;
+
         EncryptedStruck encryptedResponse = null;
         StubCreator();
 
@@ -362,7 +416,7 @@ public class BFTBFrontend {
 
                     EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey,
                             transactionId,
-                            accept, nonce.getNonce());
+                            accept, nonce.getNonce(), wts);
 
                     int numberOfAttempts = 0;
 
@@ -372,6 +426,15 @@ public class BFTBFrontend {
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .receiveAmount(encryptedRequest);
+
+                            wts++;
+                            response = _library.receiveAmountResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
+                                responses.put(strResponse, 1);
+                            }
+
                             ack += 1;
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
@@ -393,11 +456,10 @@ public class BFTBFrontend {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
                         shutdownChannels();
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
-                    } else {// Error code for UNAVAILABLE: io exception
-                            // Enters here when the replica the server was connected to crashes.
-                        shutdownChannels();
-                        throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+                        if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
+                            responses.put(e.getMessage(), 1);
+                        }
+                        // throw new StatusRuntimeException(Status.fromThrowable(e));
                     }
                 }
             }
@@ -406,8 +468,18 @@ public class BFTBFrontend {
         }
         ack = 0;
         shutdownChannels();
+        String maxEntry = null;
+        String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
-        return _library.receiveAmountResponse(encryptedResponse);
+        response = null;
+        try {
+            System.out.println(responses);
+            response = ReceiveAmountResponse.parseFrom(BaseEncoding.base64().decode(key));
+        } catch (InvalidProtocolBufferException e) {
+            e.printStackTrace();
+        } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
+          // THE RESPONSE OF THE REPLICAS.
+        return response;
 
     }
 

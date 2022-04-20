@@ -4223,3 +4223,149 @@ EndOfStreamException: Unable to read additional data from server sessionid 0x100
 	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
 2022-04-10 23:04:29,437 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d30151 closed
 2022-04-10 23:04:29,437 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d30151
+2022-04-20 17:36:51,261 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:zookeeper.version=3.6.0--b4c89dc7f6083829e18fae6e446907ae0b1f22d7, built on 02/25/2020 14:38 GMT
+2022-04-20 17:36:51,264 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:host.name=localhost
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.version=12.0.1
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.vendor=Oracle Corporation
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.home=/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.class.path=/Library/Java/JavaVirtualMachines/apache-maven-3.6-2.3/boot/plexus-classworlds-2.6.0.jar
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.library.path=/Users/rodrigopinto/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.io.tmpdir=/var/folders/3y/49fq9ngd4k38q1sk_yw7kxzc0000gn/T/
+2022-04-20 17:36:51,265 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.compiler=<NA>
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.name=Mac OS X
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.arch=x86_64
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.version=10.16
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.name=rodrigopinto
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.home=/Users/rodrigopinto
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.dir=/Users/rodrigopinto/Desktop/IST/Masters/3ºQuarter/SEC/Project/BFTB/BFTB-SEC/bftb-client
+2022-04-20 17:36:51,266 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.free=232MB
+2022-04-20 17:36:51,267 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.max=4096MB
+2022-04-20 17:36:51,267 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.total=258MB
+2022-04-20 17:36:51,270 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1005] - Initiating client connection, connectString=localhost:2181 sessionTimeout=5000 watcher=pt.ulisboa.tecnico.sdis.zk.ZKNaming$1@567479c7
+2022-04-20 17:36:51,273 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():X509Util@77] - Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+2022-04-20 17:36:51,278 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-04-20 17:36:51,282 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxn@1703] - zookeeper.request.timeout value is 0. feature enabled=false
+2022-04-20 17:36:51,294 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1154] - Opening socket connection to server localhost/127.0.0.1:2181.
+2022-04-20 17:36:51,295 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1156] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+2022-04-20 17:36:51,312 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@986] - Socket connection established, initiating session, client: /127.0.0.1:50561, server: localhost/127.0.0.1:2181
+2022-04-20 17:36:51,341 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1420] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x1000dbd81d303ca, negotiated timeout = 5000
+2022-04-20 17:36:51,397 [myid:localhost:2181] - WARN  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1266] - An exception was thrown while closing send thread for session 0x1000dbd81d303ca.
+EndOfStreamException: Unable to read additional data from server sessionid 0x1000dbd81d303ca, likely server has closed socket
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:75)
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:348)
+	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
+2022-04-20 17:36:51,505 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d303ca closed
+2022-04-20 17:36:51,505 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d303ca
+2022-04-20 17:38:28,380 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:zookeeper.version=3.6.0--b4c89dc7f6083829e18fae6e446907ae0b1f22d7, built on 02/25/2020 14:38 GMT
+2022-04-20 17:38:28,382 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:host.name=localhost
+2022-04-20 17:38:28,382 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.version=12.0.1
+2022-04-20 17:38:28,382 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.vendor=Oracle Corporation
+2022-04-20 17:38:28,382 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.home=/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.class.path=/Library/Java/JavaVirtualMachines/apache-maven-3.6-2.3/boot/plexus-classworlds-2.6.0.jar
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.library.path=/Users/rodrigopinto/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.io.tmpdir=/var/folders/3y/49fq9ngd4k38q1sk_yw7kxzc0000gn/T/
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.compiler=<NA>
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.name=Mac OS X
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.arch=x86_64
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.version=10.16
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.name=rodrigopinto
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.home=/Users/rodrigopinto
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.dir=/Users/rodrigopinto/Desktop/IST/Masters/3ºQuarter/SEC/Project/BFTB/BFTB-SEC/bftb-client
+2022-04-20 17:38:28,383 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.free=232MB
+2022-04-20 17:38:28,384 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.max=4096MB
+2022-04-20 17:38:28,384 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.total=258MB
+2022-04-20 17:38:28,387 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1005] - Initiating client connection, connectString=localhost:2181 sessionTimeout=5000 watcher=pt.ulisboa.tecnico.sdis.zk.ZKNaming$1@5ce55ae9
+2022-04-20 17:38:28,390 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():X509Util@77] - Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+2022-04-20 17:38:28,395 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-04-20 17:38:28,400 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxn@1703] - zookeeper.request.timeout value is 0. feature enabled=false
+2022-04-20 17:38:28,410 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1154] - Opening socket connection to server localhost/127.0.0.1:2181.
+2022-04-20 17:38:28,411 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1156] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+2022-04-20 17:38:28,422 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@986] - Socket connection established, initiating session, client: /127.0.0.1:50611, server: localhost/127.0.0.1:2181
+2022-04-20 17:38:28,447 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1420] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x1000dbd81d303e0, negotiated timeout = 5000
+2022-04-20 17:38:28,484 [myid:localhost:2181] - WARN  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1266] - An exception was thrown while closing send thread for session 0x1000dbd81d303e0.
+EndOfStreamException: Unable to read additional data from server sessionid 0x1000dbd81d303e0, likely server has closed socket
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:75)
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:348)
+	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
+2022-04-20 17:38:28,592 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d303e0 closed
+2022-04-20 17:38:28,592 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d303e0
+2022-04-20 18:47:26,220 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:zookeeper.version=3.6.0--b4c89dc7f6083829e18fae6e446907ae0b1f22d7, built on 02/25/2020 14:38 GMT
+2022-04-20 18:47:26,222 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:host.name=localhost
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.version=12.0.1
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.vendor=Oracle Corporation
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.home=/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.class.path=/Library/Java/JavaVirtualMachines/apache-maven-3.6-2.3/boot/plexus-classworlds-2.6.0.jar
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.library.path=/Users/rodrigopinto/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.io.tmpdir=/var/folders/3y/49fq9ngd4k38q1sk_yw7kxzc0000gn/T/
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.compiler=<NA>
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.name=Mac OS X
+2022-04-20 18:47:26,223 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.arch=x86_64
+2022-04-20 18:47:26,224 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.version=10.16
+2022-04-20 18:47:26,224 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.name=rodrigopinto
+2022-04-20 18:47:26,224 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.home=/Users/rodrigopinto
+2022-04-20 18:47:26,224 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.dir=/Users/rodrigopinto/Desktop/IST/Masters/3ºQuarter/SEC/Project/BFTB/BFTB-SEC/bftb-client
+2022-04-20 18:47:26,224 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.free=232MB
+2022-04-20 18:47:26,225 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.max=4096MB
+2022-04-20 18:47:26,225 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.total=258MB
+2022-04-20 18:47:26,228 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1005] - Initiating client connection, connectString=localhost:2181 sessionTimeout=5000 watcher=pt.ulisboa.tecnico.sdis.zk.ZKNaming$1@652b5497
+2022-04-20 18:47:26,231 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():X509Util@77] - Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+2022-04-20 18:47:26,236 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-04-20 18:47:26,240 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxn@1703] - zookeeper.request.timeout value is 0. feature enabled=false
+2022-04-20 18:47:26,249 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1154] - Opening socket connection to server localhost/127.0.0.1:2181.
+2022-04-20 18:47:26,250 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1156] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+2022-04-20 18:47:26,261 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@986] - Socket connection established, initiating session, client: /127.0.0.1:51207, server: localhost/127.0.0.1:2181
+2022-04-20 18:47:26,288 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1420] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x1000dbd81d303f6, negotiated timeout = 5000
+2022-04-20 18:47:26,325 [myid:localhost:2181] - WARN  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1266] - An exception was thrown while closing send thread for session 0x1000dbd81d303f6.
+EndOfStreamException: Unable to read additional data from server sessionid 0x1000dbd81d303f6, likely server has closed socket
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:75)
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:348)
+	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
+2022-04-20 18:47:26,438 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d303f6 closed
+2022-04-20 18:47:26,438 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d303f6
+2022-04-20 18:47:52,476 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1005] - Initiating client connection, connectString=localhost:2181 sessionTimeout=5000 watcher=pt.ulisboa.tecnico.sdis.zk.ZKNaming$1@339eac06
+2022-04-20 18:47:52,478 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-04-20 18:47:52,479 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxn@1703] - zookeeper.request.timeout value is 0. feature enabled=false
+2022-04-20 18:47:52,481 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1154] - Opening socket connection to server localhost/127.0.0.1:2181.
+2022-04-20 18:47:52,481 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1156] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+2022-04-20 18:47:52,482 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@986] - Socket connection established, initiating session, client: /127.0.0.1:51224, server: localhost/127.0.0.1:2181
+2022-04-20 18:47:52,507 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1420] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x1000dbd81d303f7, negotiated timeout = 5000
+2022-04-20 18:47:52,533 [myid:localhost:2181] - WARN  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1266] - An exception was thrown while closing send thread for session 0x1000dbd81d303f7.
+EndOfStreamException: Unable to read additional data from server sessionid 0x1000dbd81d303f7, likely server has closed socket
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:75)
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:348)
+	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
+2022-04-20 18:47:52,637 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d303f7
+2022-04-20 18:47:52,637 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d303f7 closed
+2022-04-20 18:48:58,167 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:zookeeper.version=3.6.0--b4c89dc7f6083829e18fae6e446907ae0b1f22d7, built on 02/25/2020 14:38 GMT
+2022-04-20 18:48:58,169 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:host.name=localhost
+2022-04-20 18:48:58,169 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.version=12.0.1
+2022-04-20 18:48:58,169 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.vendor=Oracle Corporation
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.home=/Library/Java/JavaVirtualMachines/jdk-12.0.1.jdk/Contents/Home
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.class.path=/Library/Java/JavaVirtualMachines/apache-maven-3.6-2.3/boot/plexus-classworlds-2.6.0.jar
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.library.path=/Users/rodrigopinto/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:.
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.io.tmpdir=/var/folders/3y/49fq9ngd4k38q1sk_yw7kxzc0000gn/T/
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:java.compiler=<NA>
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.name=Mac OS X
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.arch=x86_64
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.version=10.16
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.name=rodrigopinto
+2022-04-20 18:48:58,170 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.home=/Users/rodrigopinto
+2022-04-20 18:48:58,171 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:user.dir=/Users/rodrigopinto/Desktop/IST/Masters/3ºQuarter/SEC/Project/BFTB/BFTB-SEC/bftb-client
+2022-04-20 18:48:58,171 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.free=232MB
+2022-04-20 18:48:58,172 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.max=4096MB
+2022-04-20 18:48:58,172 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():Environment@98] - Client environment:os.memory.total=258MB
+2022-04-20 18:48:58,176 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1005] - Initiating client connection, connectString=localhost:2181 sessionTimeout=5000 watcher=pt.ulisboa.tecnico.sdis.zk.ZKNaming$1@50a0ed19
+2022-04-20 18:48:58,178 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():X509Util@77] - Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+2022-04-20 18:48:58,183 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-04-20 18:48:58,188 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ClientCnxn@1703] - zookeeper.request.timeout value is 0. feature enabled=false
+2022-04-20 18:48:58,197 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1154] - Opening socket connection to server localhost/0:0:0:0:0:0:0:1:2181.
+2022-04-20 18:48:58,197 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1156] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+2022-04-20 18:48:58,209 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@986] - Socket connection established, initiating session, client: /0:0:0:0:0:0:0:1:51326, server: localhost/0:0:0:0:0:0:0:1:2181
+2022-04-20 18:48:58,235 [myid:localhost:2181] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1420] - Session establishment complete on server localhost/0:0:0:0:0:0:0:1:2181, session id = 0x1000dbd81d303f8, negotiated timeout = 5000
+2022-04-20 18:48:58,268 [myid:localhost:2181] - WARN  [pt.tecnico.bftb.client.BFTBClientApp.main(localhost:2181):ClientCnxn$SendThread@1266] - An exception was thrown while closing send thread for session 0x1000dbd81d303f8.
+EndOfStreamException: Unable to read additional data from server sessionid 0x1000dbd81d303f8, likely server has closed socket
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doIO(ClientCnxnSocketNIO.java:75)
+	at org.apache.zookeeper.ClientCnxnSocketNIO.doTransport(ClientCnxnSocketNIO.java:348)
+	at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1262)
+2022-04-20 18:48:58,379 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main():ZooKeeper@1618] - Session: 0x1000dbd81d303f8 closed
+2022-04-20 18:48:58,379 [myid:] - INFO  [pt.tecnico.bftb.client.BFTBClientApp.main()-EventThread:ClientCnxn$EventThread@566] - EventThread shut down for session: 0x1000dbd81d303f8

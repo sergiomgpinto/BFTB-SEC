@@ -18,13 +18,42 @@ public class Account {
     private final String _username;
     ArrayList<Transaction> _transactions = new ArrayList<>();
     ArrayList<Pending> _pending = new ArrayList<>();
+    private int wts;
+    private int rid;
+    private int ack;
 
     public Account(PublicKey publicKey, int number_of_accounts, String username) {
         _balance = 1000;
         _publicKey = publicKey;
-        _publicKeyString = "PublicKey" + username.replaceAll("\\D+","");
+        _publicKeyString = "PublicKey" + username.replaceAll("\\D+", "");
         _username = username;
+        wts = 0;
+        rid = 0;
+        ack = 0;
+    }
 
+    public int getWts() {
+        return wts;
+    }
+
+    public int getack() {
+        return ack;
+    }
+
+    public int getrid() {
+        return rid;
+    }
+
+    public void setAck(int _ack) {
+        ack = _ack;
+    }
+
+    public void setWts(int _wts) {
+        wts = _wts;
+    }
+
+    public void setRid(int _rid) {
+        rid = _rid;
     }
 
     public int getBalance() {
