@@ -73,7 +73,13 @@ public class BFTBFrontend {
 
     public void shutdownChannels() {
         for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
-            ((ManagedChannel) stub.getChannel()).shutdown();
+            ((ManagedChannel) stub.getChannel()).shutdownNow();
+            try {
+                ((ManagedChannel) stub.getChannel()).awaitTermination(1000, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                System.out.println("Channel Termination was interrupted.");
+            }
+
         }
     }
 
@@ -88,11 +94,9 @@ public class BFTBFrontend {
         while (ack < 5) {
             for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
                 try {
-                    System.out.println("stub qq coisa");
                     EncryptedStruck encryptedRequestNonce = _library.getNonce(encodedPublicKey);
 
                     EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
-                    System.out.println("nonce?");
                     NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
                     EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce(),
@@ -102,13 +106,11 @@ public class BFTBFrontend {
 
                     do {
                         try {
-                            System.out.println("hello");
 
                             encryptedResponse = stub
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .openAccount(encryptedRequest);
-                            System.out.println("crash?");
                             response = _library.openAccountResponse(encryptedResponse);
                             String strResponse = BaseEncoding.base64().encode(response.toByteArray());
                             if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
@@ -134,7 +136,6 @@ public class BFTBFrontend {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
                         ack++;
-                        System.out.println("para ti salgueiro");
                         if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
                             responses.put(e.getMessage(), 1);
                         }
@@ -192,8 +193,10 @@ public class BFTBFrontend {
                                             TimeUnit.MILLISECONDS)
                                     .sendAmount(encryptedRequest);
 
-                            wts++;
                             response = _library.sendAmountResponse(encryptedResponse);
+                            if (response.getWts() != wts) {
+                                break;
+                            }
                             String strResponse = BaseEncoding.base64().encode(response.toByteArray());
 
                             if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
@@ -242,6 +245,8 @@ public class BFTBFrontend {
             throw new ResponseException(key);
         } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
           // THE RESPONSE OF THE REPLICAS.
+        wts++;
+
         return response;
 
     }
@@ -271,7 +276,7 @@ public class BFTBFrontend {
                     NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
                     EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce(),
-                            userPublicKey);
+                            userPublicKey, rid);
 
                     int numberOfAttempts = 0;
 
@@ -282,7 +287,6 @@ public class BFTBFrontend {
                                             TimeUnit.MILLISECONDS)
                                     .checkAccount(encriptedRequest);
 
-                            rid++;
                             response = _library.checkAccountResponse(encryptedResponse);
                             String strResponse = BaseEncoding.base64().encode(response.toByteArray());
 
@@ -333,30 +337,36 @@ public class BFTBFrontend {
             throw new ResponseException(maxItem);
         }
 
-        CheckAccountResponse maxResponseWts = null;
-        int maxWts = -1;
+        CheckAccountResponse maxResponseRID = null;
+        int maxRID = -1;
         for (String item : readList) {
             try {
                 response = CheckAccountResponse.parseFrom(BaseEncoding.base64().decode(item));
-                if (response.getWts() > maxWts) {
-                    maxWts = response.getWts();
-                    maxResponseWts = response;
+                if (response.getRid() > maxRID) {
+                    maxRID = response.getRid();
+                    maxResponseRID = response;
                 }
             } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
             }
         }
         readList = new ArrayList<>();
+        rid++;
 
-        return maxResponseWts;
+        return maxResponseRID;
 
     }
 
     public AuditResponse audit(String dstPublicKey, String userPublicKey) throws ManipulatedPackageException,
-            DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
+            DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack,
+            ResponseException {
+
+        readList = new ArrayList<>();
+        AuditResponse response = null;
+
         EncryptedStruck encryptedResponse = null;
         StubCreator();
 
-        while (ack < 5) {
+        while (readList.size() < 5) {
             for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
 
                 try {
@@ -371,7 +381,8 @@ public class BFTBFrontend {
 
                     NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-                    EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(), userPublicKey);
+                    EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(), userPublicKey,
+                            rid);
 
                     int numberOfAttempts = 0;
 
@@ -381,7 +392,10 @@ public class BFTBFrontend {
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .audit(encryptedRequest);
-                            ack += 1;
+                            response = _library.auditResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            readList.add(strResponse);
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
@@ -399,18 +413,48 @@ public class BFTBFrontend {
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                        readList.add(e.getMessage());
                     }
                 }
             }
-            if (ack < 5)
-                ack = 0;
+            if (readList.size() < 5) {
+                readList = new ArrayList<>();
+            }
         }
-        ack = 0;
         shutdownChannels();
 
-        return _library.auditResponse(encryptedResponse);
+        response = null;
 
+        String maxItem = null;
+        int maxOcurrences = 0;
+        for (String item : readList) {
+            if (Collections.frequency(readList, item) >= maxOcurrences) {
+                maxOcurrences = Collections.frequency(readList, item);
+                maxItem = item;
+            }
+        }
+        try {
+            response = AuditResponse.parseFrom(BaseEncoding.base64().decode(maxItem));
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(maxItem);
+        }
+
+        AuditResponse maxResponseRID = null;
+        int maxRID = -1;
+        for (String item : readList) {
+            try {
+                response = AuditResponse.parseFrom(BaseEncoding.base64().decode(item));
+                if (response.getRid() > maxRID) {
+                    maxRID = response.getRid();
+                    maxResponseRID = response;
+                }
+            } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            }
+        }
+        readList = new ArrayList<>();
+        rid++;
+
+        return maxResponseRID;
     }
 
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
@@ -449,8 +493,10 @@ public class BFTBFrontend {
                                             TimeUnit.MILLISECONDS)
                                     .receiveAmount(encryptedRequest);
 
-                            wts++;
                             response = _library.receiveAmountResponse(encryptedResponse);
+                            if (response.getWts() != wts) {
+                                break;
+                            }
                             String strResponse = BaseEncoding.base64().encode(response.toByteArray());
 
                             if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
@@ -496,58 +542,110 @@ public class BFTBFrontend {
         } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
             throw new ResponseException(key);
         }
+        wts++;
+
         return response;
 
     }
 
     public SearchKeysResponse searchKeys(String userPublicKeyString) throws ManipulatedPackageException,
-            DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack {
-        BFTBGrpc.BFTBBlockingStub stub = null;
+            DetectedReplayAttackException, ZooKeeperServer.MissingSessionException, PacketDropAttack,
+            ResponseException {
 
-        try {
-            StubCreator();
+        readList = new ArrayList<>();
+        SearchKeysResponse response = null;
 
-            EncryptedStruck encryptedRequestNonce = _library
-                    .getNonce(ByteString.copyFrom(userPublicKeyString.getBytes()));
+        EncryptedStruck encryptedResponse = null;
+        StubCreator();
 
-            EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
+        while (readList.size() < 5) {
+            for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
 
-            NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
-
-            EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString);
-
-            int numberOfAttempts = 0;
-            EncryptedStruck encryptedResponse = null;
-
-            do {
                 try {
-                    encryptedResponse = stub
-                            .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
-                                    TimeUnit.MILLISECONDS)
-                            .searchKeys(encryptedRequest);
-                    break;
-                } catch (io.grpc.StatusRuntimeException e) {
-                    if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
-                        numberOfAttempts += 1;
-                    } else {
 
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
+                    EncryptedStruck encryptedRequestNonce = _library
+                            .getNonce(ByteString.copyFrom(userPublicKeyString.getBytes()));
+
+                    EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
+
+                    NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
+
+                    EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString, rid);
+
+                    int numberOfAttempts = 0;
+
+                    do {
+                        try {
+                            encryptedResponse = stub
+                                    .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
+                                            TimeUnit.MILLISECONDS)
+                                    .searchKeys(encryptedRequest);
+
+                            response = _library.searchKeysResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            readList.add(strResponse);
+
+                            break;
+                        } catch (io.grpc.StatusRuntimeException e) {
+                            if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
+                                numberOfAttempts += 1;
+                            } else {
+
+                                throw new StatusRuntimeException(Status.fromThrowable(e));
+                            }
+                        }
+                    } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
+
+                    if (numberOfAttempts == 5) {
+                        throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
+                    }
+
+                    return _library.searchKeysResponse(encryptedResponse);
+                } catch (io.grpc.StatusRuntimeException e) {
+                    if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
+                                                                 // ServerImpl.
+                        readList.add(e.getMessage());
                     }
                 }
-            } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
-
-            if (numberOfAttempts == 5) {
-                throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
             }
-
-            return _library.searchKeysResponse(encryptedResponse);
-        } catch (io.grpc.StatusRuntimeException e) {
-            if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in ServerImpl.
-                throw new StatusRuntimeException(Status.fromThrowable(e));
-            } else {// Error code for UNAVAILABLE: io exception
-                    // Enters here when the replica the server was connected to crashes.
-                throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
+            if (readList.size() < 5) {
+                readList = new ArrayList<>();
             }
         }
+        shutdownChannels();
+        response = null;
+
+        String maxItem = null;
+        int maxOcurrences = 0;
+        for (String item : readList) {
+            if (Collections.frequency(readList, item) >= maxOcurrences) {
+                maxOcurrences = Collections.frequency(readList, item);
+                maxItem = item;
+            }
+        }
+        try {
+            response = SearchKeysResponse.parseFrom(BaseEncoding.base64().decode(maxItem));
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(maxItem);
+        }
+
+        SearchKeysResponse maxResponseRID = null;
+        int maxRID = -1;
+        for (String item : readList) {
+            try {
+                response = SearchKeysResponse.parseFrom(BaseEncoding.base64().decode(item));
+                if (response.getRid() > maxRID) {
+                    maxRID = response.getRid();
+                    maxResponseRID = response;
+                }
+            } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            }
+        }
+        readList = new ArrayList<>();
+        rid++;
+
+        return maxResponseRID;
+
     }
 }

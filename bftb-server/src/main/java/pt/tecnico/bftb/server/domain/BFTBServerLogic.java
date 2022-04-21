@@ -133,6 +133,7 @@ public class BFTBServerLogic {
                 // Account found.
                 ACCOUNT_FOUND = true;
                 List<Transaction> transactions = account.getTransactions();
+                account.incrementRid();
 
                 for (Transaction transaction : transactions) {
                     set.add(transaction.toString());
@@ -142,6 +143,7 @@ public class BFTBServerLogic {
         if (!ACCOUNT_FOUND) {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
+
         return set;
     }
 
@@ -169,6 +171,7 @@ public class BFTBServerLogic {
                 ret.add(pendingTransaction.toString(owner_account.getPublicKeyString()));
             }
         }
+        owner_account.incrementRid();
         return ret;
     }
 
@@ -268,6 +271,7 @@ public class BFTBServerLogic {
     public synchronized Account searchAccount(String key) throws NonExistentAccount {
         for (Account account : _accounts) {
             if (account.getPublicKeyString().equals(key)) {// Account already exists.
+                account.incrementRid();
                 return account;
             }
         }
@@ -277,6 +281,8 @@ public class BFTBServerLogic {
     public synchronized Account searchAccount(PublicKey key) throws NonExistentAccount {
         for (Account account : _accounts) {
             if (account.getPublicKey().equals(key)) {// Account already exists.
+                account.incrementRid();
+
                 return account;
             }
         }
@@ -285,5 +291,9 @@ public class BFTBServerLogic {
 
     public int getAccWTS(String key) throws NonExistentAccount {
         return searchAccount(key).getWts();
+    }
+
+    public int getAccRid(String key) throws NonExistentAccount {
+        return searchAccount(key).getRid();
     }
 }

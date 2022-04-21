@@ -184,7 +184,6 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         CheckAccountResponse checkresponse = null;
         try {
-
             List<String> ret = _bftb.checkAccount(
                     request.getRawData().getCheckAccountRequest().getKey().toStringUtf8());
 

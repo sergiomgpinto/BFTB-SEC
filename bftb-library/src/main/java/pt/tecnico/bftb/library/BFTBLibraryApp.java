@@ -105,13 +105,14 @@ public class BFTBLibraryApp {
         // audit
         // searchKeys
 
-        public EncryptedStruck checkAccount(ByteString bytepublic, int nonce, String userPublicKeyString) {
+        public EncryptedStruck checkAccount(ByteString bytepublic, int nonce, String userPublicKeyString, int rid) {
 
                 this._nonce = nonce;
 
                 CheckAccountRequest checkAccountRequest = CheckAccountRequest.newBuilder()
                                 .setKey(bytepublic)
                                 .setUserKey(userPublicKeyString)
+                                .setRid(rid)
                                 .build();
 
                 RawData rawData = RawData.newBuilder()
@@ -152,12 +153,13 @@ public class BFTBLibraryApp {
                                 .addAllPending(accResponse.getPendingList()).build();
         }
 
-        public EncryptedStruck audit(ByteString bytepublic, int nonce, String userPublicKeyString) {
+        public EncryptedStruck audit(ByteString bytepublic, int nonce, String userPublicKeyString, int rid) {
 
                 this._nonce = nonce;
 
                 AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic)
                                 .setUserKey(userPublicKeyString)
+                                .setRid(rid)
                                 .build();
 
                 RawData rawData = RawData.newBuilder()
@@ -198,12 +200,14 @@ public class BFTBLibraryApp {
                 return AuditResponse.newBuilder().addAllSet(accResponse.getSetList()).build();
         }
 
-        public EncryptedStruck searchKeys(int nonce, String userPublicKeyString) {
+        public EncryptedStruck searchKeys(int nonce, String userPublicKeyString, int rid) {
 
                 this._nonce = nonce;
 
                 SearchKeysRequest searchKeysRequest = SearchKeysRequest.newBuilder()
-                                .setUserKey(userPublicKeyString).build();
+                                .setUserKey(userPublicKeyString)
+                                .setRid(rid)
+                                .build();
 
                 RawData rawData = RawData.newBuilder()
                                 .setSearchKeyRequest(searchKeysRequest)

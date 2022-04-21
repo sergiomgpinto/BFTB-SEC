@@ -32,6 +32,10 @@ public class Account {
         ack = 0;
     }
 
+    public int getRid() {
+        return rid;
+    }
+
     public int getWts() {
         return wts;
     }
@@ -40,8 +44,9 @@ public class Account {
         return ack;
     }
 
-    public int incremetRid() {
-        return rid;
+    public void incrementRid() {
+        rid++;
+
     }
 
     public void incrementAck() {

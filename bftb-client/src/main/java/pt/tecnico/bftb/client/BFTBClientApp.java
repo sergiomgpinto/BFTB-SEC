@@ -255,13 +255,16 @@ public class BFTBClientApp {
                         List<String> list = null;
                         try {
                             list = frontend.audit(splittedCommand[1], publicKeyString).getSetList();
+                            for (String transaction : list) {
+                                System.out.println(transaction);
+                            }
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
+
                         }
 
-                        for (String transaction : list) {
-                            System.out.println(transaction);
-                        }
                         break;
 
                     case "search_keys":
@@ -272,7 +275,13 @@ public class BFTBClientApp {
                         }
 
                         System.out.println("List of public keys available:");
-                        List<String> list_search_keys = frontend.searchKeys(publicKeyString).getResultList();
+                        List<String> list_search_keys = null;
+                        try {
+                            list_search_keys = frontend.searchKeys(publicKeyString).getResultList();
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
+
+                        }
 
                         for (String publicKeyList : list_search_keys) {
                             int id = Integer.parseInt(publicKeyList.substring(publicKeyList.length() - 1));
