@@ -23,4 +23,6 @@ public interface Label {
     String NO_AUTHORIZATION = "This account has no authorization to accept or reject this transaction.";
     String ERROR_DECRYPT = "Either the message was tempered, duplicated or the public key given is invalid";
     String REPLAY_ATTACK = "Nonce verification failed. Message received does not hold property freshness.";
+    String INVALID_SOLUTION = "The solution for the hash puzzle sent by the client does not meet " +
+            "the requirements.";
 }

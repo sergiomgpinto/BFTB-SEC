@@ -138,16 +138,16 @@ public class Account {
     /**
      * @return adds transaction with given params returning success.
      */
-    public synchronized String addTransaction(String publicKey, int amount, TransactionType type) {
+    public synchronized String addTransaction(String publicKey, int amount, TransactionType type, String status) {
 
         if (type == TransactionType.CREDIT) {
             _balance += amount;
 
-            Transaction transaction = new Transaction(publicKey, amount, type);
+            Transaction transaction = new Transaction(publicKey, amount, type, status);
             _transactions.add(transaction);
         } else {
             // We don't subtract balance here since it was done in send_amount before.
-            Transaction transaction = new Transaction(publicKey, amount, type);
+            Transaction transaction = new Transaction(publicKey, amount, type, status);
             _transactions.add(transaction);
         }
         return Label.SUCCESS_TRANSACTION;
@@ -157,8 +157,9 @@ public class Account {
      * @return adds transaction with given params returning success. Used when recovering server
      * data from database.
      */
-    public synchronized void addTransactionRecoverState(String publicKey, int amount, TransactionType type) {
-        Transaction transaction = new Transaction(publicKey, amount, type);
+    public synchronized void addTransactionRecoverState(String publicKey, int amount, TransactionType type
+            , String status) {
+        Transaction transaction = new Transaction(publicKey, amount, type, status);
         _transactions.add(transaction);
     }
 

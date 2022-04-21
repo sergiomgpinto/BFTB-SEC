@@ -8,6 +8,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.*;
 import org.apache.zookeeper.server.ZooKeeperServer;
+import pt.tecnico.bftb.client.exception.PacketDropAttack;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
@@ -60,10 +61,14 @@ public class BFTBFrontend {
             EncryptedStruck encryptedRequestNonce = _library.getNonce(encodedPublicKey);
 
             EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
-
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce(), username);
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            String solution = powService.mineSolution(challenge);
+
+            EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce()
+                    , username,solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
@@ -115,7 +120,12 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount, nonce.getNonce());
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            String solution = powService.mineSolution(challenge);
+
+            EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount
+                    , nonce.getNonce(), solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
@@ -170,7 +180,12 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce(),userPublicKey);
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            String solution = powService.mineSolution(challenge);
+
+            EncryptedStruck encriptedRequest = _library.checkAccount(dstPublicBytes, nonce.getNonce()
+                    ,userPublicKey,solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
@@ -224,7 +239,12 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce(), userPublicKey);
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            String solution = powService.mineSolution(challenge);
+
+            EncryptedStruck encryptedRequest = _library.audit(dstPublicBytes, nonce.getNonce()
+                    , userPublicKey, solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
@@ -275,7 +295,12 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey, transactionId, accept, nonce.getNonce());
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            String solution = powService.mineSolution(challenge);
+
+            EncryptedStruck encryptedRequest = _library.receiveAmount(receiverPublicKey, senderPublicKey
+                    , transactionId, accept, nonce.getNonce(), solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;
@@ -326,7 +351,14 @@ public class BFTBFrontend {
 
             NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
-            EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString);
+            String challenge = nonce.getPowRequest().getChallenge();
+            ProofOfWorkService powService = new ProofOfWorkService();
+            long inicio = System.nanoTime();
+            String solution = powService.mineSolution(challenge);
+            long fim = System.nanoTime();
+            double elapsedtime = fim-inicio;
+            System.out.println(elapsedtime / 1000000000);
+            EncryptedStruck encryptedRequest = _library.searchKeys(nonce.getNonce(), userPublicKeyString, solution);
 
             int numberOfAttempts = 0;
             EncryptedStruck encryptedResponse = null;

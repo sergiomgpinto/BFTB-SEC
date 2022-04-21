@@ -33,6 +33,7 @@ CREATE TABLE Transaction (
 	SourceUserKey VARCHAR(12) NOT NULL,
 	DestinationUserKey VARCHAR(12) NOT NULL,
     DigitalSignature MEDIUMBLOB NOT NULL,
+    Status VARCHAR(10) NOT NULL,
     /*Digital signature of transaction acceptance sent by the user with the DestinationUserKey since
       he is the one receiving the money.
      */

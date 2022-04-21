@@ -104,7 +104,7 @@ public class BFTBMySqlDriver {
 
                         //Add transaction.
                         sql = "INSERT INTO Transaction(Amount, TransactionType, " +
-                                "SourceUserKey, DestinationUserKey,DigitalSignature) VALUES (?,?,?,?,?)";
+                                "SourceUserKey, DestinationUserKey,DigitalSignature,Status) VALUES (?,?,?,?,?,?)";
 
                         stmt = con.prepareStatement(sql);
                         stmt.setString(1, args[7]);
@@ -116,6 +116,7 @@ public class BFTBMySqlDriver {
                         Blob blobDataReceiveAmount = con.createBlob();
                         blobDataReceiveAmount.setBytes(1,byteDigitalSignatureRcvAmount);
                         stmt.setBlob(5,blobDataReceiveAmount);
+                        stmt.setString(6, "ACCEPTED");
                         blobDataReceiveAmount.free();
                         stmt.executeUpdate();
 
@@ -139,6 +140,24 @@ public class BFTBMySqlDriver {
                         stmt = con.prepareStatement(sql);
                         stmt.setString(1, args[5]);
                         stmt.setString(2, args[6]);
+                        stmt.executeUpdate();
+
+                        //Add transaction.
+                        sql = "INSERT INTO Transaction(Amount, TransactionType, " +
+                                "SourceUserKey, DestinationUserKey,DigitalSignature,Status) VALUES (?,?,?,?,?,?)";
+
+                        stmt = con.prepareStatement(sql);
+                        stmt.setString(1, args[7]);
+                        stmt.setString(2, args[8]);
+                        stmt.setString(3, args[5]);
+                        stmt.setString(4, args[4]);
+
+                        byte[] byteDigitalSignatureRcvAmount = digitalSignature.toByteArray();
+                        Blob blobDataReceiveAmount = con.createBlob();
+                        blobDataReceiveAmount.setBytes(1,byteDigitalSignatureRcvAmount);
+                        stmt.setBlob(5,blobDataReceiveAmount);
+                        stmt.setString(6, "REJECTED");
+                        blobDataReceiveAmount.free();
                         stmt.executeUpdate();
                     }
                     return Label.SUCCESS;

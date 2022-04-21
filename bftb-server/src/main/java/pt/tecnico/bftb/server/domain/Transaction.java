@@ -6,11 +6,13 @@ public class Transaction {
     // transaction has a transaction together.
     private final int _amount;
     private final TransactionType _type;
+    private final String _status;
 
-    public Transaction(String publicKey, int amount, TransactionType type){
+    public Transaction(String publicKey, int amount, TransactionType type, String status){
         _publicKey = publicKey;
         _amount = amount;
         _type = type;
+        _status = status;
     }
 
     /*************************************Getters***********************************/
@@ -41,6 +43,6 @@ public class Transaction {
      */
     public String toString(){
         return "Other entity's publicKey: " + _publicKey + " | Amount: " + String.valueOf(_amount)
-                + " | Type: " + _type.toString();
+                + " | Type: " + _type.toString() + " | Status: " + _status.toString();
     }
 }

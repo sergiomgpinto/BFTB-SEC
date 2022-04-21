@@ -1,8 +1,10 @@
 package pt.tecnico.bftb.server.domain;
 
 import com.google.protobuf.ByteString;
+import org.apache.commons.lang.RandomStringUtils;
 import pt.tecnico.bftb.server.database.BFTBMySqlDriver;
 import pt.tecnico.bftb.server.domain.exception.*;
+
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -10,10 +12,7 @@ import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 public class BFTBServerLogic {
 
@@ -23,6 +22,8 @@ public class BFTBServerLogic {
     HashSet<Account> _accounts = new HashSet<>();
     // Set of all nonces in the system. Each user with its public key has only one nonce.
     HashMap<PublicKey, Integer> _nonces = new HashMap<>();
+    // Set of all recent challenges for every account to verify proof of work.
+    HashMap<PublicKey, String> _challenges = new HashMap<>();
 
     private int _number_of_accounts = 0;
     // Provider of function to generate randomly nonce.
@@ -92,6 +93,22 @@ public class BFTBServerLogic {
         throw new NonExistentAccount(Label.ERR_NO_ACC);
     }
 
+    /**
+     * @return respective recent proof of work challenge for given account public key.
+     */
+    public synchronized String getChallenge(PublicKey publicKey) {
+        return _challenges.get(publicKey);
+    }
+
+    /**
+     * @return respective recent proof of work challenge for given account public key string.
+     */
+    public synchronized String getChallenge(String publicKeyString) throws NonExistentAccount {
+        Account account = searchAccount(publicKeyString);
+        PublicKey publicKey = account.getPublicKey();
+
+        return _challenges.get(publicKey);
+    }
     /*************************************Setters***********************************/
 
 
@@ -163,9 +180,24 @@ public class BFTBServerLogic {
     /***********************WRITE OPERATIONS****************/
 
     /**
+     * @return a random string used for proof of work.
+     */
+    private String generateRandomString() {
+        int leftLimit = 97; // letter 'a'
+        int rightLimit = 122; // letter 'z'
+        int targetStringLength = 10;
+        Random random = new Random();
+
+        return random.ints(leftLimit, rightLimit + 1)
+                .limit(targetStringLength)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+    }
+
+    /**
      * @return a new nonce for given public key user in format bytestring.
      */
-    public synchronized int newNonce(ByteString publicKey) {
+    public String[] newNonce(ByteString publicKey) {
         // If a man in the middle wanted to brute force to find the nonce, it would take him
         // 2**32 server responses to generate which ultimately for our problem at hands
         // is much much more than the time needed.
@@ -174,6 +206,8 @@ public class BFTBServerLogic {
 
         int nonce = randomGenerator.nextInt();
         PublicKey pubKey = null;
+        // Generate new proof of work challenge that will be a random string.
+        String challenge = generateRandomString();
 
         try {
             pubKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(publicKey.toByteArray()));
@@ -182,15 +216,19 @@ public class BFTBServerLogic {
         }
         synchronized (this) {
             _nonces.put(pubKey, nonce);
+            _challenges.put(pubKey,challenge);
         }
-        return nonce;
+        return new String[]{String.valueOf(nonce),challenge};
     }
 
     /**
      * @return a new nonce for given public key user.
      */
-    public int newNonce(PublicKey publicKey) {
+    public String[] newNonce(PublicKey publicKey) {
+        // Generate new nonce that will be a random int.
         int nonce = randomGenerator.nextInt();
+        // Generate new proof of work challenge that will be a random string.
+        String challenge = generateRandomString();
         PublicKey pubKey = null;
 
         try {
@@ -201,8 +239,9 @@ public class BFTBServerLogic {
         }
         synchronized (this) {
             _nonces.put(pubKey, nonce);
+            _challenges.put(pubKey,challenge);
         }
-        return nonce;
+        return new String[]{String.valueOf(nonce),challenge};
     }
 
     /**
@@ -210,7 +249,7 @@ public class BFTBServerLogic {
      */
     public String openAccount(ByteString key, String username) throws InvalidKeySpecException, NoSuchAlgorithmException, BFTBDatabaseException {
         PublicKey publicKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(key.toByteArray()));
-        Account newAccount = null;
+        Account newAccount;
         // This function is restricting one account per user.
         synchronized (this) {
             for (Account account : _accounts) {
@@ -334,12 +373,15 @@ public class BFTBServerLogic {
             }
 
             receiverAccount.removePendingTransaction(senderKey, transactionId);
+            senderAccount.addTransaction(receiverKey, amount, TransactionType.WITHDRAWAL, "REJECTED");
+            receiverAccount.addTransaction(senderKey, amount, TransactionType.CREDIT, "REJECTED");
 
             String answerString = "false";
             String[] args = { answerString, String.valueOf(initialAmount + amount), String.valueOf(initialAmount),
                     senderAccount.getPublicKeyString(),
                     receiverAccount.getPublicKeyString(), senderAccount.getPublicKeyString(),
-                    String.valueOf(pendingTransaction.getTransactionId()) };
+                    String.valueOf(pendingTransaction.getTransactionId()),
+                    String.valueOf(pendingTransaction.getAmount()), TransactionType.CREDIT.toString()};
 
             // Writes information to the database.
             String ret = mySqlDriver.dbParser("receiveAmount",args,null,digitalSignature);
@@ -353,7 +395,7 @@ public class BFTBServerLogic {
         } else { // User accepts transaction.
             TransactionType type = pendingTransaction.getType();
             senderAccount.removePendingTransaction(receiverKey, transactionId);
-            senderAccount.addTransaction(receiverKey, amount, type);
+            senderAccount.addTransaction(receiverKey, amount, type, "ACCEPTED");
 
             pendingTransaction = receiverAccount.getPendingTransaction(senderKey, transactionId);
             if (pendingTransaction == null) {
@@ -373,7 +415,7 @@ public class BFTBServerLogic {
             type = pendingTransaction.getType();
             receiverAccount.removePendingTransaction(senderKey, transactionId);
             int initialAmount = receiverAccount.getBalance();
-            receiverAccount.addTransaction(senderKey, amount, type);
+            receiverAccount.addTransaction(senderKey, amount, type, "ACCEPTED");
 
             String answerString = "true";
             String[] args = { answerString, String.valueOf(receiverAccount.getBalance()), String.valueOf(initialAmount),
@@ -468,13 +510,13 @@ public class BFTBServerLogic {
             while (set.next()) {
                 int amount = set.getInt("Amount");
                 String sourceKey = set.getString("SourceUserKey");
-                String destinationKey = set.getString("DestinationUserkey");
-
+                String destinationKey = set.getString("DestinationUserKey");
+                String status = set.getString("Status");
                 Account senderAccount = searchAccount(sourceKey);
                 Account receiverAccount = searchAccount(destinationKey);
 
-                senderAccount.addTransactionRecoverState(destinationKey,amount,TransactionType.WITHDRAWAL);
-                receiverAccount.addTransactionRecoverState(sourceKey,amount,TransactionType.CREDIT);
+                senderAccount.addTransactionRecoverState(destinationKey,amount,TransactionType.WITHDRAWAL,status);
+                receiverAccount.addTransactionRecoverState(sourceKey,amount,TransactionType.CREDIT,status);
 
             }
         } catch (ClassNotFoundException | SQLException cnfe) {

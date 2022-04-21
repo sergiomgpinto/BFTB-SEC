@@ -15,7 +15,6 @@ import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 
 import io.grpc.Context;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
@@ -23,7 +22,7 @@ import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
 import pt.tecnico.bftb.grpc.Bftb.RawData;
-import pt.tecnico.bftb.grpc.Bftb.NonceRequest;
+import pt.tecnico.bftb.grpc.Bftb.ProofOfWorkRequest;
 import pt.tecnico.bftb.grpc.Bftb.NonceResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.ReceiveAmountResponse;
@@ -106,21 +105,30 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (request.getRawData().getNonceRequest().getSenderKey().toString(StandardCharsets.UTF_8).contains("PublicKey")) {
             try {
-                response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(_bftb.searchAccount(request.getRawData()
-                                .getNonceRequest().getSenderKey()
-                        .toString(StandardCharsets.UTF_8)).getPublicKey()))
+                String[] ret = _bftb.newNonce(_bftb.searchAccount(request
+                        .getRawData()
+                        .getNonceRequest().getSenderKey()
+                        .toString(StandardCharsets.UTF_8)).getPublicKey());
+
+                response = NonceResponse.newBuilder()
+                        .setNonce(Integer.parseInt(ret[0]))
+                        .setPowRequest(ProofOfWorkRequest.newBuilder().setChallenge(ret[1]).build())
                         .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
             } catch (NonExistentAccount e) {
                 responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
                 return;
             }
         } else {
-            response = NonceResponse.newBuilder().setNonce(_bftb.newNonce(request.getRawData()
-                            .getNonceRequest().getSenderKey()))
+            String[] ret = _bftb.newNonce(request.getRawData()
+                .getNonceRequest()
+                .getSenderKey());
+            response = NonceResponse.newBuilder()
+                    .setNonce(Integer.parseInt(ret[0]))
+                    .setPowRequest(ProofOfWorkRequest.newBuilder().setChallenge(ret[1]).build())
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded())).build();
         }
 
-        RawData rawData = RawData.newBuilder().setNonceResponse(response).build();
+         RawData rawData = RawData.newBuilder().setNonceResponse(response).build();
 
          EncryptedStruck encryptedResponse = EncryptedStruck.newBuilder().setDigitalSignature(ByteString.copyFrom(BFTBCripto.digitalSign(
                         BFTBCripto.hash(BaseEncoding.base64().encode(rawData.toByteArray()).getBytes()), _serverPrivateKey)))
@@ -156,6 +164,24 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         String userKey = request.getRawData().getCheckAccountRequest().getUserKey();
+
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getCheckAccountRequest().getPowResponse().getSolution();
+        String challenge;
+        try {
+            challenge = _bftb.getChallenge(userKey);
+        } catch (NonExistentAccount e) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
+            return;
+        }
+
         int correctStoredNonce = _bftb.getUserNonce(userKey);
         int receivedNonce = request.getRawData().getNonce();
 
@@ -220,6 +246,24 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         String userKey = request.getRawData().getAuditRequest().getUserKey();
+
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getAuditRequest().getPowResponse().getSolution();
+        String challenge = null;
+        try {
+            challenge = _bftb.getChallenge(userKey);
+        } catch (NonExistentAccount e) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
+            return;
+        }
+
         int correctStoredNonce = _bftb.getUserNonce(userKey);
         int receivedNonce = request.getRawData().getNonce();
 
@@ -264,6 +308,24 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         String userKey = request.getRawData().getSearchKeyRequest().getUserKey();
+
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getSearchKeyRequest().getPowResponse().getSolution();
+        String challenge = null;
+        try {
+            challenge = _bftb.getChallenge(userKey);
+        } catch (NonExistentAccount e) {
+            responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+            return;
+        }
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
+            return;
+        }
+
         int correctStoredNonce = _bftb.getUserNonce(userKey);
         int receivedNonce = request.getRawData().getNonce();
 
@@ -299,7 +361,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
                 .encode(request.getRawData().toByteArray()).getBytes());
-        PublicKey publicKey = null;
+        PublicKey publicKey;
 
         try {
             publicKey = KeyFactory.getInstance("RSA")
@@ -324,6 +386,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (!isCorrect) {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
+            return;
+        }
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getOpenAccountRequest().getPowResponse().getSolution();
+        String challenge = _bftb.getChallenge(publicKey);
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
             return;
         }
 
@@ -436,6 +508,18 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getSendAmountRequest().getPowResponse().getSolution();
+        String challenge = null;
+        challenge = _bftb.getChallenge(senderPubKey);
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
+            return;
+        }
+
         if (senderKey == null || senderKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
@@ -520,6 +604,18 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(PERMISSION_DENIED.withDescription(Label.ERROR_DECRYPT).asRuntimeException());
             return;
         }
+
+        // Guarantees that proof of work challenge was completed successfully.
+        String solution = request.getRawData().getReceiveAmountRequest().getPowResponse().getSolution();
+        String challenge = _bftb.getChallenge(publicKey);
+
+        ProofOfWorkService powService = new ProofOfWorkService();
+
+        if (!powService.verifySolution(challenge,solution)) {
+            responseObserver.onError(PERMISSION_DENIED.withDescription(Label.INVALID_SOLUTION).asRuntimeException());
+            return;
+        }
+
         boolean answer = request.getRawData().getReceiveAmountRequest().getAnswer();
         String receiverKey = request.getRawData().getReceiveAmountRequest().getReceiverKey();
         String senderKey = request.getRawData().getReceiveAmountRequest().getSenderKey();
