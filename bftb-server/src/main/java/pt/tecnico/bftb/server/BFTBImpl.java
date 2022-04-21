@@ -551,6 +551,7 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         if (request.getRawData().getReceiveAmountRequest().getSenderKey() == null) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
+
             return;
         }
 

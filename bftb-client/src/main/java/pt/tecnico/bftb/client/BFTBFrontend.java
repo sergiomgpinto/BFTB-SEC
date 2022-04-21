@@ -4,6 +4,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import io.grpc.*;
 import io.grpc.netty.shaded.io.netty.internal.tcnative.Library;
+import io.opencensus.trace.Tracestate.Entry;
 
 import org.apache.zookeeper.server.ZooKeeperServer;
 import pt.tecnico.bftb.grpc.BFTBGrpc;
@@ -42,12 +44,12 @@ public class BFTBFrontend {
     int ack = 0;
     int wts = 0;
     int rid = 0;
-
     ZKNaming zkNaming;
     ArrayList<ZKRecord> zkRecordsList;
     String mainPath = "/nodes";
     ArrayList<BFTBGrpc.BFTBBlockingStub> stubs;
     HashMap<String, Integer> responses;
+    ArrayList<String> readList;
 
     public BFTBFrontend(String zoohost, String zooport, PrivateKey privateKey, PublicKey publickey) {
         _library = new BFTBLibraryApp(privateKey, publickey);
@@ -246,12 +248,15 @@ public class BFTBFrontend {
 
     public CheckAccountResponse checkAccount(String dstPublicKey, String userPublicKey)
             throws ManipulatedPackageException, ZooKeeperServer.MissingSessionException, DetectedReplayAttackException,
-            StatusRuntimeException, PacketDropAttack {
+            StatusRuntimeException, PacketDropAttack, ResponseException {
+
+        readList = new ArrayList<>();
+        CheckAccountResponse response = null;
 
         EncryptedStruck encryptedResponse = null;
         StubCreator();
 
-        while (ack < 5) {
+        while (readList.size() < 5) {
             for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
 
                 try {
@@ -276,7 +281,12 @@ public class BFTBFrontend {
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .checkAccount(encriptedRequest);
-                            ack += 1;
+
+                            rid++;
+                            response = _library.checkAccountResponse(encryptedResponse);
+                            String strResponse = BaseEncoding.base64().encode(response.toByteArray());
+
+                            readList.add(strResponse);
 
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
@@ -295,17 +305,49 @@ public class BFTBFrontend {
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        throw new StatusRuntimeException(Status.fromThrowable(e));
+
+                        readList.add(e.getMessage());
+
                     }
                 }
             }
-            if (ack < 5)
-                ack = 0;
+            if (readList.size() < 5) {
+                readList = new ArrayList<>();
+            }
         }
-        ack = 0;
         shutdownChannels();
 
-        return _library.checkAccountResponse(encryptedResponse);
+        response = null;
+
+        String maxItem = null;
+        int maxOcurrences = 0;
+        for (String item : readList) {
+            if (Collections.frequency(readList, item) >= maxOcurrences) {
+                maxOcurrences = Collections.frequency(readList, item);
+                maxItem = item;
+            }
+        }
+        try {
+            response = CheckAccountResponse.parseFrom(BaseEncoding.base64().decode(maxItem));
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(maxItem);
+        }
+
+        CheckAccountResponse maxResponseWts = null;
+        int maxWts = -1;
+        for (String item : readList) {
+            try {
+                response = CheckAccountResponse.parseFrom(BaseEncoding.base64().decode(item));
+                if (response.getWts() > maxWts) {
+                    maxWts = response.getWts();
+                    maxResponseWts = response;
+                }
+            } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            }
+        }
+        readList = new ArrayList<>();
+
+        return maxResponseWts;
 
     }
 
@@ -453,8 +495,7 @@ public class BFTBFrontend {
             response = ReceiveAmountResponse.parseFrom(BaseEncoding.base64().decode(key));
         } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
             throw new ResponseException(key);
-        } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
-          // THE RESPONSE OF THE REPLICAS.
+        }
         return response;
 
     }

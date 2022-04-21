@@ -206,6 +206,8 @@ public class BFTBClientApp {
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
 
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
 
                         break;
