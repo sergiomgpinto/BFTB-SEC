@@ -10,6 +10,11 @@ public class Account {
     private PublicKey _publicKey;
     private final String _publicKeyString;
     private final String _username;
+    ArrayList<Transaction> _transactions = new ArrayList<>();
+    ArrayList<Pending> _pending = new ArrayList<>();
+    private int wts;
+    private int rid;
+    private int ack;
 
     // List of all concluded transactions of this account.
     private ArrayList<Transaction> _transactions = new ArrayList<>();
@@ -20,9 +25,40 @@ public class Account {
     public Account(PublicKey publicKey, String username) {
         _balance = 1000;
         _publicKey = publicKey;
-        _publicKeyString = "PublicKey" + username.replaceAll("\\D+","");
+        _publicKeyString = "PublicKey" + username.replaceAll("\\D+", "");
         _username = username;
+        wts = 0;
+        rid = 0;
+        ack = 0;
+    }
 
+    public int getRid() {
+        return rid;
+    }
+
+    public int getWts() {
+        return wts;
+    }
+
+    public int getack() {
+        return ack;
+    }
+
+    public void incrementRid() {
+        rid++;
+
+    }
+
+    public void incrementAck() {
+        ack++;
+    }
+
+    public void setWts(int _wts) {
+        wts = _wts;
+    }
+
+    public void setRid() {
+        rid++;
     }
 
     // Constructor used when recovering state from database.

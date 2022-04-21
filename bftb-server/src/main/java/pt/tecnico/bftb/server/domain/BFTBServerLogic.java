@@ -29,6 +29,7 @@ public class BFTBServerLogic {
     // Provider of function to generate randomly nonce.
     private final static SecureRandom randomGenerator = new SecureRandom();
 
+
     public BFTBServerLogic() {
         recoverBFTBServerState();
     }
@@ -46,6 +47,7 @@ public class BFTBServerLogic {
         try {
             account = searchAccount(publicKey);
             PublicKey pubKey = account.getPublicKey();
+
             synchronized (this) {
                 nonce = _nonces.get(pubKey);
             }
@@ -63,11 +65,13 @@ public class BFTBServerLogic {
     public synchronized List<String> getAllPublicKeys() {
         List<String> result = new ArrayList<>();
 
+
         for (Account account : _accounts) {
             result.add(account.getPublicKeyString());
         }
         return result;
     }
+
 
     /**
      * @return a specific account with given string key.
@@ -80,6 +84,7 @@ public class BFTBServerLogic {
         }
         throw new NonExistentAccount(Label.ERR_NO_ACC);
     }
+
 
     /**
      * @return a specific account with given public key.
@@ -106,7 +111,6 @@ public class BFTBServerLogic {
     public synchronized String getChallenge(String publicKeyString) throws NonExistentAccount {
         Account account = searchAccount(publicKeyString);
         PublicKey publicKey = account.getPublicKey();
-
         return _challenges.get(publicKey);
     }
     /*************************************Setters***********************************/
@@ -114,6 +118,7 @@ public class BFTBServerLogic {
 
 
     /***********************READ OPERATIONS****************/
+
 
     /**
      * @return all concluded transactions from given string format key user.
@@ -123,7 +128,7 @@ public class BFTBServerLogic {
 
         List<String> set = new ArrayList<>();
         boolean ACCOUNT_FOUND = false;
-
+      
         synchronized (this) {
             for (Account account : _accounts) {
                 String publicKey = account.getPublicKeyString();
@@ -141,6 +146,7 @@ public class BFTBServerLogic {
                 throw new NonExistentAccount(Label.ERR_NO_ACC);
             }
         }
+
         return set;
     }
 
@@ -174,6 +180,7 @@ public class BFTBServerLogic {
                 ret.add(pendingTransaction.toString(owner_account.getPublicKeyString()));
             }
         }
+        owner_account.incrementRid();
         return ret;
     }
 
@@ -244,6 +251,7 @@ public class BFTBServerLogic {
         return new String[]{String.valueOf(nonce),challenge};
     }
 
+
     /**
      * @return success if account was successfully created for given params otherwise the respective errors.
      */
@@ -261,6 +269,7 @@ public class BFTBServerLogic {
             _number_of_accounts += 1;
             newAccount = new Account(publicKey, username);
             _accounts.add(newAccount);
+
         }
         String publicKeyString = newAccount.getPublicKeyString();
 
@@ -327,7 +336,7 @@ public class BFTBServerLogic {
 
         Account receiverAccount = null;
         Account senderAccount = null;
-        try{
+        try {
             receiverAccount = searchAccount(receiverKey);
             senderAccount = searchAccount(senderKey);
         } catch (NonExistentAccount e1) {
@@ -415,6 +424,7 @@ public class BFTBServerLogic {
             type = pendingTransaction.getType();
             receiverAccount.removePendingTransaction(senderKey, transactionId);
             int initialAmount = receiverAccount.getBalance();
+
             receiverAccount.addTransaction(senderKey, amount, type, "ACCEPTED");
 
             String answerString = "true";
@@ -524,5 +534,13 @@ public class BFTBServerLogic {
         } catch (NonExistentAccount nea) {
             // Should never happen
         }
+    }
+
+    public int getAccWTS(String key) throws NonExistentAccount {
+        return searchAccount(key).getWts();
+    }
+
+    public int getAccRid(String key) throws NonExistentAccount {
+        return searchAccount(key).getRid();
     }
 }

@@ -48,6 +48,8 @@ public class BFTBClientApp {
         Path path = null;
         KeyStore ks = null;
         char serverLastChar = ' ';
+        int ack = 0;
+        int wts = 0;
 
         System.out.println(BFTBClientApp.class.getSimpleName());
 
@@ -73,7 +75,7 @@ public class BFTBClientApp {
         String publicKeyString = null;
         String name = System.console().readLine(Label.CLIENT_NAME);
 
-        while (!name.replaceAll("[0-9]","").equals("user")) {
+        while (!name.replaceAll("[0-9]", "").equals("user")) {
             System.out.println("Please insert a valid username.");
             name = System.console().readLine(Label.CLIENT_NAME);
         }
@@ -85,10 +87,9 @@ public class BFTBClientApp {
             String inputPassword = System.console().readLine(Label.PASSWORD);
 
             if (inputPassword.equals("keystoreuser" + lastChar)) {
-                System.out.printf("Welcome to the Byzantine Fault Tolerant Banking Client App %s.%n",name);
+                System.out.printf("Welcome to the Byzantine Fault Tolerant Banking Client App %s.%n", name);
                 break;
-            }
-            else{
+            } else {
                 if (counter == 1) {
                     System.out.println("User authentication failed.");
                     System.out.println("Closing...");
@@ -96,26 +97,11 @@ public class BFTBClientApp {
                 }
                 System.out.println("Wrong password.");
                 counter -= 1;
-                System.out.printf("You have %d attempt(s) left.%n",counter);
+                System.out.printf("You have %d attempt(s) left.%n", counter);
             }
         }
 
-        String mainPath = "/nodes";
-
-        try {
-            zkNaming = new ZKNaming(zooHost, zooPort);
-            zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
-            randomServerIndex = ThreadLocalRandom.current().nextInt(0, zkRecordsList.size());
-            serverInfo = zkRecordsList.get(randomServerIndex).getURI();
-            splittedServerInfo = serverInfo.split(":");
-            serverHost = splittedServerInfo[0];
-            serverPort = Integer.parseInt(splittedServerInfo[1]);
-            serverLastChar = Integer.toString(serverPort).charAt(Integer.toString(serverPort).length() - 1);
-
-        } catch (ZKNamingException zkne) {
-            System.out.println("An error occurred in a zookeeper service while trying to connect the server");
-            return;
-        }
+        zkNaming = new ZKNaming(zooHost, zooPort);
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
 
@@ -128,14 +114,11 @@ public class BFTBClientApp {
             ks.load((new FileInputStream(
                     path.getParent() + "/certificates/user" + lastChar + "keystore.jks")),
                     ("keystoreuser" + lastChar).toCharArray());
-            Certificate cert = ks.getCertificate(name);
 
-            publicKey = cert.getPublicKey();
+            publicKey = ks.getCertificate(name).getPublicKey();
 
-            PrivateKeyEntry priv = (KeyStore.PrivateKeyEntry) ks.getEntry(name,
-                    new KeyStore.PasswordProtection(("keystoreuser" + lastChar).toCharArray()));
-
-            privateKey = priv.getPrivateKey();
+            privateKey = ((KeyStore.PrivateKeyEntry) ks.getEntry(name,
+                    new KeyStore.PasswordProtection(("keystoreuser" + lastChar).toCharArray()))).getPrivateKey();
 
             encodedPublicKey = ByteString.copyFrom(publicKey.getEncoded());
 
@@ -148,8 +131,8 @@ public class BFTBClientApp {
 
         /*---------------------------------- Public an Private keys generation ----------------------------------*/
 
-        frontend = new BFTBFrontend(serverHost, serverPort, privateKey, publicKey);// Frontend server
-                                                                                   // implementation.
+        frontend = new BFTBFrontend(zooHost, zooPort, privateKey, publicKey);// Frontend server
+        // implementation.
         System.out.println(
                 "I'm user" + lastChar + " and I am connected to the server running in port number " + serverPort + ".");
 
@@ -166,12 +149,16 @@ public class BFTBClientApp {
                     case "open_account":
 
                         try {
-                            OpenAccountResponse response = frontend.openAccount(encodedPublicKey,name);
+
+                            OpenAccountResponse response = frontend.openAccount(encodedPublicKey, name);
                             publicKeyString = response.getPublicKey();
                             System.out.println(response.getResponse());
                             doesUserHaveAccountRegistered = true;
+
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
                         break;
 
@@ -194,6 +181,8 @@ public class BFTBClientApp {
                                     .getResponse());
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
                         break;
 
@@ -218,6 +207,8 @@ public class BFTBClientApp {
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
 
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
 
                         break;
@@ -242,6 +233,8 @@ public class BFTBClientApp {
                                         Integer.parseInt(splittedCommand[2]), accept).getResult());
                             } catch (ManipulatedPackageException mpe) {
                                 System.out.println(mpe.getMessage());
+                            } catch (ResponseException re) {
+                                System.out.println(re.getMessage());
                             }
                         } else {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT_ANSWER);
@@ -263,13 +256,16 @@ public class BFTBClientApp {
                         List<String> list = null;
                         try {
                             list = frontend.audit(splittedCommand[1], publicKeyString).getSetList();
+                            for (String transaction : list) {
+                                System.out.println(transaction);
+                            }
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
+
                         }
 
-                        for (String transaction : list) {
-                            System.out.println(transaction);
-                        }
                         break;
 
                     case "search_keys":
@@ -280,7 +276,13 @@ public class BFTBClientApp {
                         }
 
                         System.out.println("List of public keys available:");
-                        List<String> list_search_keys = frontend.searchKeys(publicKeyString).getResultList();
+                        List<String> list_search_keys = null;
+                        try {
+                            list_search_keys = frontend.searchKeys(publicKeyString).getResultList();
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
+
+                        }
 
                         for (String publicKeyList : list_search_keys) {
                             int id = Integer.parseInt(publicKeyList.substring(publicKeyList.length() - 1));
@@ -302,42 +304,17 @@ public class BFTBClientApp {
                         System.out.println(Label.INVALIDCOMMAND);
 
                 }
-            }
-            catch (DetectedReplayAttackException drae) {
+            } catch (DetectedReplayAttackException drae) {
                 System.out.println(drae.getMessage());
-            }
-            catch (ZooKeeperServer.MissingSessionException e) {
-                try {
-
-                    zkRecordsList = new ArrayList<>(zkNaming.listRecords(mainPath));
-
-                    randomServerIndex = ThreadLocalRandom.current().nextInt(0, zkRecordsList.size());
-
-                    serverInfo = zkRecordsList.get(randomServerIndex).getURI();
-                    splittedServerInfo = serverInfo.split(":");
-                    serverHost = splittedServerInfo[0];
-                    serverPort = Integer.parseInt(splittedServerInfo[1]);
-                    frontend.setNewTarget(serverHost,serverPort);
-
-                    System.out.println("\nServer died.\nConnecting to another replica...");
-                    System.out.println(
-                            "Connected to the server running in port number " + serverPort + "!\n");
-                    System.out.println("Retype your command please.");
-
-                } catch (ZKNamingException e1) {
-                    System.out.println("Error while trying to connect to another replica.");
-                }
-
-            }
-            catch (StatusRuntimeException sre) {// This is where the exceptions from grpc are caught.
+            } catch (ZooKeeperServer.MissingSessionException e) {
+                e.printStackTrace();
+            } catch (StatusRuntimeException sre) {// This is where the exceptions from grpc are caught.
                 System.out.println(sre.getMessage());
-            }
-            catch (NumberFormatException nfe) {
+            } catch (NumberFormatException nfe) {
                 System.out.println(Label.INVALID_AMOUNT_TYPE);
             } catch (ManipulatedPackageException e) {
                 e.printStackTrace();
-            }
-            catch (PacketDropAttack pda) {
+            } catch (PacketDropAttack pda) {
                 System.out.println(pda.getMessage());
             }
 
