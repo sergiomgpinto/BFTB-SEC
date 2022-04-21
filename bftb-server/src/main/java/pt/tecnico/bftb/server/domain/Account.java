@@ -40,20 +40,20 @@ public class Account {
         return ack;
     }
 
-    public int getrid() {
+    public int incremetRid() {
         return rid;
     }
 
-    public void setAck(int _ack) {
-        ack = _ack;
+    public void incrementAck() {
+        ack++;
     }
 
     public void setWts(int _wts) {
         wts = _wts;
     }
 
-    public void setRid(int _rid) {
-        rid = _rid;
+    public void setRid() {
+        rid++;
     }
 
     public int getBalance() {

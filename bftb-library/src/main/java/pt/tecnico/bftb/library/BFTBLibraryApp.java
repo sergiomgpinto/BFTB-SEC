@@ -314,7 +314,7 @@ public class BFTBLibraryApp {
         }
 
         public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
-                        int amount, int nonce) {
+                        int amount, int nonce, int wts) {
 
                 this._nonce = nonce;
 
@@ -322,6 +322,7 @@ public class BFTBLibraryApp {
                                 .setSenderKey(senderPublicKey)
                                 .setReceiverKey(receiverPublicKey)
                                 .setAmount(amount)
+                                .setWts(wts)
                                 .build();
 
                 RawData rawData = RawData.newBuilder()

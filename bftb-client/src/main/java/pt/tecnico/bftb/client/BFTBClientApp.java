@@ -156,6 +156,8 @@ public class BFTBClientApp {
 
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
                         break;
 
@@ -178,6 +180,8 @@ public class BFTBClientApp {
                                     .getResponse());
                         } catch (ManipulatedPackageException mpe) {
                             System.out.println(mpe.getMessage());
+                        } catch (ResponseException re) {
+                            System.out.println(re.getMessage());
                         }
                         break;
 
@@ -226,6 +230,8 @@ public class BFTBClientApp {
                                         Integer.parseInt(splittedCommand[2]), accept).getResult());
                             } catch (ManipulatedPackageException mpe) {
                                 System.out.println(mpe.getMessage());
+                            } catch (ResponseException re) {
+                                System.out.println(re.getMessage());
                             }
                         } else {
                             System.out.println(Label.INVALID_ARGS_RCV_AMOUNT_ANSWER);

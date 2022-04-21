@@ -91,7 +91,7 @@ public class BFTBServerLogic {
         return Label.SUCC_ACC_CRT + ":" + publicKeyString;
     }
 
-    public synchronized String sendAmount(String senderKey, String receiverKey, int amount)
+    public synchronized String sendAmount(String senderKey, String receiverKey, int amount, int wts)
             throws InvalidKeySpecException, NoSuchAlgorithmException, NoAccountException {
 
         Account senderAccount;
@@ -116,6 +116,7 @@ public class BFTBServerLogic {
         int transactionId = receiverAccount.getIncomingPending().size() + 1;
         receiverAccount.addPending(senderKey, amount, false, transactionId);
         senderAccount.addPending(receiverKey, amount, true, transactionId);
+        senderAccount.setWts(wts);
 
         return Label.WAIT_ACC;
     }
@@ -193,10 +194,6 @@ public class BFTBServerLogic {
             throw new NonExistentAccount(Label.ERR_NO_ACC);
         }
 
-        if (wts < searchAccount(receiverKey).getWts()){
-            return
-        }
-
         Pending pendingTransaction = senderAccount.getPendingTransaction(receiverKey, transactionId);
 
         if (pendingTransaction == null) {
@@ -263,7 +260,7 @@ public class BFTBServerLogic {
             receiverAccount.removePendingTransaction(senderKey, transactionId);
             int initialAmount = receiverAccount.getBalance();
             receiverAccount.addTransaction(senderKey, amount, type);
-
+            receiverAccount.setWts(wts);
             return Label.SUCCESS_TRANSACTION;
         }
     }
@@ -284,5 +281,9 @@ public class BFTBServerLogic {
             }
         }
         throw new NonExistentAccount(Label.ERR_NO_ACC);
+    }
+
+    public int getAccWTS(String key) throws NonExistentAccount {
+        return searchAccount(key).getWts();
     }
 }

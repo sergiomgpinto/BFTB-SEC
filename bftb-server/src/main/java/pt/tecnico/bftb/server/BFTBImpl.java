@@ -462,6 +462,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             return;
         }
 
+        int wts = request.getRawData().getReceiveAmountRequest().getWts();
+
         if (senderKey == null || senderKey.isBlank()) {
             responseObserver.onError(INVALID_ARGUMENT.withDescription(Label.INVALID_PUBLIC_KEY).asRuntimeException());
             return;
@@ -496,8 +498,14 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
 
         try {
 
+            int serverWTS = _bftb.getAccWTS(senderKey);
+            if (wts < serverWTS) {
+                responseObserver.onError(CANCELLED.withDescription(Label.WTS).asRuntimeException());
+                return;
+            }
+
             SendAmountResponse ret = SendAmountResponse.newBuilder()
-                    .setResponse(_bftb.sendAmount(senderKey, receiverKey, amount))
+                    .setResponse(_bftb.sendAmount(senderKey, receiverKey, amount, wts))
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
                     .build();
 
@@ -515,6 +523,8 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
             responseObserver.onError(UNKNOWN.withDescription(Label.UNKNOWN_ERROR).asRuntimeException());
         } catch (NoAccountException nae) {
             responseObserver.onError(ABORTED.withDescription(nae.getMessage()).asRuntimeException());
+        } catch (NonExistentAccount nea) {
+            responseObserver.onError(ABORTED.withDescription(nea.getMessage()).asRuntimeException());
         }
     }
 
@@ -588,9 +598,16 @@ public class BFTBImpl extends BFTBGrpc.BFTBImplBase {
         }
 
         try {
+            int serverWTS = _bftb.getAccWTS(receiverKey);
+            if (wts < serverWTS) {
+                responseObserver.onError(CANCELLED.withDescription(Label.WTS).asRuntimeException());
+                return;
+            }
+
             ReceiveAmountResponse logicResponse = ReceiveAmountResponse.newBuilder()
                     .setResult(_bftb.receiveAmount(receiverKey, senderKey, transactionId, answer, wts))
                     .setServerPublicKey(ByteString.copyFrom(_serverPublicKey.getEncoded()))
+                    .setWts(wts)
                     .build();
 
             RawData rawData = RawData.newBuilder().setReceiveAmountResponse(logicResponse)

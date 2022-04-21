@@ -42,6 +42,7 @@ public class BFTBFrontend {
     int ack = 0;
     int wts = 0;
     int rid = 0;
+
     ZKNaming zkNaming;
     ArrayList<ZKRecord> zkRecordsList;
     String mainPath = "/nodes";
@@ -76,7 +77,7 @@ public class BFTBFrontend {
 
     public OpenAccountResponse openAccount(ByteString encodedPublicKey, String username)
             throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException,
-            PacketDropAttack {
+            PacketDropAttack, ResponseException {
         responses = new HashMap<>();
         EncryptedStruck encryptedResponse = null;
         StubCreator();
@@ -85,11 +86,11 @@ public class BFTBFrontend {
         while (ack < 5) {
             for (BFTBGrpc.BFTBBlockingStub stub : stubs) {
                 try {
-
+                    System.out.println("stub qq coisa");
                     EncryptedStruck encryptedRequestNonce = _library.getNonce(encodedPublicKey);
 
                     EncryptedStruck encryptedResponseNonce = stub.getNonce(encryptedRequestNonce);
-
+                    System.out.println("nonce?");
                     NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
                     EncryptedStruck encryptedRequest = _library.openAccount(encodedPublicKey, nonce.getNonce(),
@@ -99,41 +100,39 @@ public class BFTBFrontend {
 
                     do {
                         try {
+                            System.out.println("hello");
+
                             encryptedResponse = stub
                                     .withDeadlineAfter((long) (_duration * Math.pow(2, numberOfAttempts)),
                                             TimeUnit.MILLISECONDS)
                                     .openAccount(encryptedRequest);
-                            wts++; // ?????????????????????????????????
+                            System.out.println("crash?");
                             response = _library.openAccountResponse(encryptedResponse);
                             String strResponse = BaseEncoding.base64().encode(response.toByteArray());
-
                             if (responses.computeIfPresent(strResponse, (k, v) -> v + 1) == null) {
                                 responses.put(strResponse, 1);
                             }
 
-                            ack += 1;
+                            ack++;
                             break;
                         } catch (io.grpc.StatusRuntimeException e) {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
                                 numberOfAttempts += 1;
                             } else {
-                                shutdownChannels();
                                 throw new StatusRuntimeException(Status.fromThrowable(e));
                             }
                         }
                     } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
                     if (numberOfAttempts == 5) {
-                        shutdownChannels();
                         throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
                     }
 
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels(); // ?????????????
-                        ack += 1;
-
+                        ack++;
+                        System.out.println("para ti salgueiro");
                         if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
                             responses.put(e.getMessage(), 1);
                         }
@@ -147,15 +146,14 @@ public class BFTBFrontend {
 
         ack = 0;
         shutdownChannels();
-        String maxEntry = null;
         String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
         response = null;
         try {
             System.out.println(responses);
             response = OpenAccountResponse.parseFrom(BaseEncoding.base64().decode(key));
-        } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(key);
         } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
           // THE RESPONSE OF THE REPLICAS.
         return response;
@@ -164,7 +162,7 @@ public class BFTBFrontend {
 
     public SendAmountResponse sendAmount(String senderPublicKey, String receiverPublicKey, int amount)
             throws ManipulatedPackageException, DetectedReplayAttackException, ZooKeeperServer.MissingSessionException,
-            PacketDropAttack {
+            PacketDropAttack, ResponseException {
         responses = new HashMap<>();
         SendAmountResponse response = null;
 
@@ -182,7 +180,7 @@ public class BFTBFrontend {
                     NonceResponse nonce = _library.getNonceResponse(encryptedResponseNonce);
 
                     EncryptedStruck encryptedRequest = _library.sendAmount(senderPublicKey, receiverPublicKey, amount,
-                            nonce.getNonce());
+                            nonce.getNonce(), wts);
 
                     int numberOfAttempts = 0;
                     do {
@@ -206,21 +204,18 @@ public class BFTBFrontend {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
                                 numberOfAttempts += 1;
                             } else {
-                                shutdownChannels();
                                 throw new StatusRuntimeException(Status.fromThrowable(e));
                             }
                         }
                     } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
                     if (numberOfAttempts == 5) {
-                        shutdownChannels();
                         throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
                     }
 
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels();
 
                         if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
                             responses.put(e.getMessage(), 1);
@@ -235,15 +230,14 @@ public class BFTBFrontend {
         }
         ack = 0;
         shutdownChannels();
-        String maxEntry = null;
         String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
         response = null;
         try {
             System.out.println(responses);
             response = SendAmountResponse.parseFrom(BaseEncoding.base64().decode(key));
-        } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(key);
         } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
           // THE RESPONSE OF THE REPLICAS.
         return response;
@@ -289,26 +283,19 @@ public class BFTBFrontend {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
                                 numberOfAttempts += 1;
                             } else {
-                                shutdownChannels();
                                 throw new StatusRuntimeException(Status.fromThrowable(e));
                             }
                         }
                     } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
                     if (numberOfAttempts == 5) {
-                        shutdownChannels();
                         throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
                     }
 
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels();
                         throw new StatusRuntimeException(Status.fromThrowable(e));
-                    } else {// Error code for UNAVAILABLE: io exception
-                            // Enters here when the replica the server was connected to crashes.
-                        shutdownChannels();
-                        throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
                     }
                 }
             }
@@ -358,26 +345,19 @@ public class BFTBFrontend {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
                                 numberOfAttempts += 1;
                             } else {
-                                shutdownChannels();
                                 throw new StatusRuntimeException(Status.fromThrowable(e));
                             }
                         }
                     } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
                     if (numberOfAttempts == 5) {
-                        shutdownChannels();
                         throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
                     }
 
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels();
                         throw new StatusRuntimeException(Status.fromThrowable(e));
-                    } else {// Error code for UNAVAILABLE: io exception
-                            // Enters here when the replica the server was connected to crashes.
-                        shutdownChannels();
-                        throw new ZooKeeperServer.MissingSessionException("The replica you were connected to died.");
                     }
                 }
             }
@@ -393,7 +373,7 @@ public class BFTBFrontend {
 
     public ReceiveAmountResponse receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
             boolean accept) throws ManipulatedPackageException, DetectedReplayAttackException,
-            ZooKeeperServer.MissingSessionException, PacketDropAttack {
+            ZooKeeperServer.MissingSessionException, PacketDropAttack, ResponseException {
 
         responses = new HashMap<>();
         ReceiveAmountResponse response = null;
@@ -441,21 +421,18 @@ public class BFTBFrontend {
                             if (e.getStatus().getCode() == Status.Code.DEADLINE_EXCEEDED) {
                                 numberOfAttempts += 1;
                             } else {
-                                shutdownChannels();
                                 throw new StatusRuntimeException(Status.fromThrowable(e));
                             }
                         }
                     } while (_numberOfAttemptsToRetransmitPacket - numberOfAttempts > 0);
 
                     if (numberOfAttempts == 5) {
-                        shutdownChannels();
                         throw new PacketDropAttack(Label.PACKET_DROP_ATTACK);
                     }
 
                 } catch (io.grpc.StatusRuntimeException e) {
                     if (e.getStatus().getCode().value() != 14) { // Enters here for every other exception thrown in
                                                                  // ServerImpl.
-                        shutdownChannels();
                         if (responses.computeIfPresent(e.getMessage(), (k, v) -> v + 1) == null) {
                             responses.put(e.getMessage(), 1);
                         }
@@ -468,15 +445,14 @@ public class BFTBFrontend {
         }
         ack = 0;
         shutdownChannels();
-        String maxEntry = null;
         String key = Collections.max(responses.entrySet(), Map.Entry.comparingByValue()).getKey();
 
         response = null;
         try {
             System.out.println(responses);
             response = ReceiveAmountResponse.parseFrom(BaseEncoding.base64().decode(key));
-        } catch (InvalidProtocolBufferException e) {
-            e.printStackTrace();
+        } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+            throw new ResponseException(key);
         } // PROBABLY WILL NEED TO BE CHANGED TO BE COHERENT WITH
           // THE RESPONSE OF THE REPLICAS.
         return response;
