@@ -1,13 +1,11 @@
 package pt.tecnico.bftb.server.domain;
 
-import java.security.PublicKey;
-
 public class Pending {
-    String _senderKey;
-    int _amount;
-    int _transactionId;
-    TransactionStatus _status;
-    TransactionType _type;
+    private final String _senderKey;
+    private final int _amount;
+    private final int _transactionId;
+    private final TransactionStatus _status;
+    private final TransactionType _type;
 
     public Pending(String senderKey, int amount, TransactionStatus status, TransactionType type, int transactionId) {
         _senderKey = senderKey;
@@ -17,38 +15,46 @@ public class Pending {
         _transactionId = transactionId;
     }
 
-    public void setSenderKey(String senderKey) {
-        _senderKey = senderKey;
-    }
+    /*************************************Getters***********************************/
 
+    /**
+     * @return key in string format of the user that sent money.
+     */
     public String getSenderKey() {
         return _senderKey;
     }
 
-    public void setAmount(int amount) {
-        _amount = amount;
-    }
-
+    /**
+     * @return amount of transaction.
+     */
     public int getAmount() {
         return _amount;
     }
 
-    public void setComplete() {
-        _status = TransactionStatus.COMPLETE;
-    }
-
+    /**
+     * @return either COMPLETE or PENDING.
+     */
     public TransactionStatus getStatus() {
         return _status;
     }
 
+    /**
+     * @return either CREDIT or WITHDRAWAL.
+     */
     public TransactionType getType() {
         return _type;
     }
 
+    /**
+     * @return id of transaction.
+     */
     public int getTransactionId(){
         return _transactionId;
     }
 
+    /**
+     * @return string format of transaction.
+     */
     public String toString(String dstPublicKey) {
         return "TransactionId: " + String.valueOf(_transactionId) + " -> Owner of the account with "
                 + _senderKey + " wants to transfer " + String.valueOf(_amount)

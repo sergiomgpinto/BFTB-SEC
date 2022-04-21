@@ -11,7 +11,9 @@ import com.google.protobuf.ByteString;
 
 import pt.tecnico.bftb.cripto.BFTBCripto;
 import pt.tecnico.bftb.grpc.Bftb.AuditRequest;
+import pt.tecnico.bftb.grpc.Bftb.ProofOfWorkRequest;
 import pt.tecnico.bftb.grpc.Bftb.AuditResponse;
+import pt.tecnico.bftb.grpc.Bftb.ProofOfWorkResponse;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountRequest;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.EncryptedStruck;
@@ -66,10 +68,10 @@ public class BFTBLibraryApp {
                                 .build();
         }
 
-        public NonceResponse getNonceResponse(EncryptedStruck response)
-                        throws ManipulatedPackageException, DetectedReplayAttackException {
-                byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
-                                .encode(response.getRawData().toByteArray()).getBytes());
+
+    public NonceResponse getNonceResponse(EncryptedStruck response) throws ManipulatedPackageException {
+        byte[] calculatedHash = BFTBCripto.hash(BaseEncoding.base64()
+                .encode(response.getRawData().toByteArray()).getBytes());
 
                 PublicKey publicKey = null;
 
@@ -93,27 +95,33 @@ public class BFTBLibraryApp {
                                         " was sent.");
                 }
 
+ 
                 return NonceResponse.newBuilder()
-                                .setNonce(nonceResponse.getNonce())
-                                .build();
+                        .setNonce(nonceResponse.getNonce())
+                        .setPowRequest(ProofOfWorkRequest.newBuilder()
+                        .setChallenge(nonceResponse.getPowRequest().getChallenge()).build())
+                        .build();
         }
 
-        /****************************
-         * Read Only Operations
-         ***********************************/
-        // checkAccount
-        // audit
-        // searchKeys
 
-        public EncryptedStruck checkAccount(ByteString bytepublic, int nonce, String userPublicKeyString, int rid) {
+    }
+    /**************************** Read Only Operations ***********************************/
+    // checkAccount
+    // audit
+    // searchKeys
+
+    public EncryptedStruck checkAccount(ByteString bytepublic, int nonce, String userPublicKeyString
+            , String solution, int rid) {
 
                 this._nonce = nonce;
 
+
                 CheckAccountRequest checkAccountRequest = CheckAccountRequest.newBuilder()
-                                .setKey(bytepublic)
-                                .setUserKey(userPublicKeyString)
-                                .setRid(rid)
-                                .build();
+                        .setKey(bytepublic)
+                        .setUserKey(userPublicKeyString)
+                        .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                        .setRid(rid)
+                        .build();
 
                 RawData rawData = RawData.newBuilder()
                                 .setCheckAccountRequest(checkAccountRequest)
@@ -153,14 +161,16 @@ public class BFTBLibraryApp {
                                 .addAllPending(accResponse.getPendingList()).build();
         }
 
-        public EncryptedStruck audit(ByteString bytepublic, int nonce, String userPublicKeyString, int rid) {
 
-                this._nonce = nonce;
+    public EncryptedStruck audit(ByteString bytepublic, int nonce, String userPublicKeyString, String solution,int rid) {
 
-                AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic)
-                                .setUserKey(userPublicKeyString)
-                                .setRid(rid)
-                                .build();
+        this._nonce = nonce;
+
+        AuditRequest auditRequest = AuditRequest.newBuilder().setKey(bytepublic)
+                .setUserKey(userPublicKeyString)
+                .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                .setRid(rid)
+                .build();
 
                 RawData rawData = RawData.newBuilder()
                                 .setAuditRequest(auditRequest)
@@ -194,25 +204,28 @@ public class BFTBLibraryApp {
                 int receivedNonce = response.getRawData().getNonce();
                 if (_nonce != receivedNonce) {
                         throw new DetectedReplayAttackException("Nonce verification failed in client app. " +
-                                        "Message received doe snot hold property of freshness");
+                                        "Message received does not hold property of freshness");
                 }
 
                 return AuditResponse.newBuilder().addAllSet(accResponse.getSetList()).build();
         }
 
-        public EncryptedStruck searchKeys(int nonce, String userPublicKeyString, int rid) {
 
+    public EncryptedStruck searchKeys(int nonce, String userPublicKeyString, String solution, int rid) {
                 this._nonce = nonce;
 
                 SearchKeysRequest searchKeysRequest = SearchKeysRequest.newBuilder()
-                                .setUserKey(userPublicKeyString)
-                                .setRid(rid)
-                                .build();
+                        .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                        .setUserKey(userPublicKeyString)
+                        .setRid(rid)
+                        .build();
 
+      
                 RawData rawData = RawData.newBuilder()
                                 .setSearchKeyRequest(searchKeysRequest)
                                 .setNonce(nonce)
                                 .build();
+      
 
                 byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
                 ByteString digest = ByteString.copyFrom(BFTBCripto.hash(rawDataBytes));
@@ -254,15 +267,16 @@ public class BFTBLibraryApp {
         // sendAmount
         // receiveAmount
 
-        public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce, String username) {
 
+    public EncryptedStruck openAccount(ByteString encodedPublicKey, int nonce, String username, String solution) {
                 this._nonce = nonce;
 
                 OpenAccountRequest openAccountRequest = OpenAccountRequest.newBuilder()
-                                .setKey(encodedPublicKey)
-                                .setUsername(username)
-                                .build();
-
+                      .setKey(encodedPublicKey)
+                      .setUsername(username)
+                      .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                      .build();
+      
                 RawData rawData = RawData.newBuilder()
                                 .setOpenAccountRequest(openAccountRequest)
                                 .setNonce(nonce)
@@ -317,18 +331,19 @@ public class BFTBLibraryApp {
                                 .setResponse(accResponse.getResponse()).build();
         }
 
-        public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
-                        int amount, int nonce, int wts) {
 
+    public EncryptedStruck sendAmount(String senderPublicKey, String receiverPublicKey,
+                                      int amount, int nonce, String solution, int wts) {
                 this._nonce = nonce;
 
                 SendAmountRequest sendAmountRequest = SendAmountRequest.newBuilder()
-                                .setSenderKey(senderPublicKey)
-                                .setReceiverKey(receiverPublicKey)
-                                .setAmount(amount)
-                                .setWts(wts)
-                                .build();
-
+                      .setSenderKey(senderPublicKey)
+                      .setReceiverKey(receiverPublicKey)
+                      .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                      .setAmount(amount)
+                      .setWts(wts)
+                      .build();
+      
                 RawData rawData = RawData.newBuilder()
                                 .setSendAmountRequest(sendAmountRequest)
                                 .setNonce(nonce)
@@ -381,27 +396,31 @@ public class BFTBLibraryApp {
                                         "Message received doe snot hold property of freshness");
                 }
 
-                return SendAmountResponse.newBuilder().setResponse(accResponse.getResponse())
-                                .setResponse(accResponse.getResponse()).build();
+
+                return SendAmountResponse.newBuilder().setResponse(accResponse.getResponse()).build();
         }
 
-        public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId,
-                        boolean accept, int nonce, int wts) {
 
+    }
+
+    public EncryptedStruck receiveAmount(String receiverPublicKey, String senderPublicKey, int transactionId
+            , boolean accept, int nonce, String solution, int wts) {
                 this._nonce = nonce;
 
-                ReceiveAmountRequest receiveAmountRequest = ReceiveAmountRequest.newBuilder()
-                                .setReceiverKey(receiverPublicKey)
-                                .setSenderKey(senderPublicKey)
-                                .setTransactionId(transactionId)
-                                .setAnswer(accept)
-                                .setWts(wts)
-                                .build();
+        ReceiveAmountRequest receiveAmountRequest = ReceiveAmountRequest.newBuilder()
+                        .setReceiverKey(receiverPublicKey)
+                        .setSenderKey(senderPublicKey)
+                        .setPowResponse(ProofOfWorkResponse.newBuilder().setSolution(solution).build())
+                        .setTransactionId(transactionId)
+                        .setWts(wts)
+                        .setAnswer(accept)
+                        .build();
 
                 RawData rawData = RawData.newBuilder()
                                 .setReceiveAmountRequest(receiveAmountRequest)
                                 .setNonce(nonce)
                                 .build();
+
 
                 byte[] rawDataBytes = BaseEncoding.base64().encode(rawData.toByteArray()).getBytes();
 

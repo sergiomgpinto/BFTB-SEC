@@ -1,4 +1,4 @@
-package pt.tecnico.bftb.client;
+package pt.tecnico.bftb.client.exception;
 
 public class PacketDropAttack extends Exception{
 

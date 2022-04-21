@@ -14,12 +14,26 @@ message NonceRequest{
 message NonceResponse{
   bytes serverPublicKey = 1;// To verify digital signature in the library.
   int32 nonce = 2;
+  ProofOfWorkRequest powRequest = 3;
+  // Server sends nonce and challenge in order for the user to have a computationally moderate
+  // work before using services in order to prevent against denial of service attacks.
+}
+
+// This is the string to which the client has a find a solution so that:
+// hash(challenge + solution) -> starts with first 8 bits equal to zero
+message ProofOfWorkRequest{
+  string challenge = 1;
+}
+
+message ProofOfWorkResponse{
+  string solution = 1;
 }
 /*-------------------- Read Operations ---------------------*/
 message CheckAccountRequest{
   bytes key = 1;
   string userKey = 2; // Needed so that server knows what is the nonce the user.
   int32 rid = 3;
+  ProofOfWorkResponse powResponse = 4;
 }
 
 message CheckAccountResponse{
@@ -33,7 +47,7 @@ message AuditRequest{
   bytes key = 1;
   string userKey = 2; // Needed so that server knows what is the nonce the user.
   int32 rid = 3;
-
+  ProofOfWorkResponse powResponse = 4;
 }
 
 message AuditResponse{
@@ -45,7 +59,7 @@ message AuditResponse{
 message SearchKeysRequest{
   string userKey = 1; // Needed so that server knows what is the nonce the user.
   int32 rid = 2;
-
+  ProofOfWorkResponse powResponse = 3;
 }
 
 message SearchKeysResponse{
@@ -57,6 +71,7 @@ message SearchKeysResponse{
 message OpenAccountRequest{
   bytes key = 1;
   string username = 2;
+  ProofOfWorkResponse powResponse = 3;
 }
 
 message OpenAccountResponse{
@@ -71,7 +86,7 @@ message SendAmountRequest{
   string receiverKey = 2;
   int32 amount = 3;
   int32 wts = 4;
-
+  ProofOfWorkResponse powResponse = 5;
 }
 
 message SendAmountResponse{
@@ -87,7 +102,7 @@ message ReceiveAmountRequest{
   int32 transactionId = 3;
   bool answer = 4;//true for accept and false for reject
   int32 wts = 5;
-
+  ProofOfWorkResponse powResponse = 6;
 }
 
 message ReceiveAmountResponse{
@@ -107,20 +122,22 @@ message EncryptedStruck{
 
 message RawData{
   int32 nonce = 1;
-  OpenAccountRequest openAccountRequest = 2;
-  OpenAccountResponse openAccountResponse = 3;
-  SendAmountRequest sendAmountRequest = 4;
-  SendAmountResponse sendAmountResponse = 5;
-  CheckAccountRequest checkAccountRequest = 6;
-  CheckAccountResponse checkAccountResponse = 7;
-  AuditRequest auditRequest = 8;
-  AuditResponse auditResponse = 9;
-  ReceiveAmountRequest receiveAmountRequest = 10;
-  ReceiveAmountResponse receiveAmountResponse = 11;
-  SearchKeysRequest searchKeyRequest = 12;
-  SearchKeysResponse searchKeyResponse = 13;
-  NonceRequest nonceRequest = 14;
-  NonceResponse nonceResponse = 15;
+  oneof request { // This guarantees at most one field can be set at the same time.
+    OpenAccountRequest openAccountRequest = 2;
+    OpenAccountResponse openAccountResponse = 3;
+    SendAmountRequest sendAmountRequest = 4;
+    SendAmountResponse sendAmountResponse = 5;
+    CheckAccountRequest checkAccountRequest = 6;
+    CheckAccountResponse checkAccountResponse = 7;
+    AuditRequest auditRequest = 8;
+    AuditResponse auditResponse = 9;
+    ReceiveAmountRequest receiveAmountRequest = 10;
+    ReceiveAmountResponse receiveAmountResponse = 11;
+    SearchKeysRequest searchKeyRequest = 12;
+    SearchKeysResponse searchKeyResponse = 13;
+    NonceRequest nonceRequest = 14;
+    NonceResponse nonceResponse = 15;
+  }
 }
 
 /*------------------------------------ Services ------------------------------------*/

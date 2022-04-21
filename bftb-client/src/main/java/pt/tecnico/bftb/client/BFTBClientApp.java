@@ -18,6 +18,7 @@ import com.google.protobuf.ByteString;
 import io.grpc.StatusRuntimeException;
 import io.grpc.netty.shaded.io.netty.util.internal.ThreadLocalRandom;
 import org.apache.zookeeper.server.ZooKeeperServer;
+import pt.tecnico.bftb.client.exception.PacketDropAttack;
 import pt.tecnico.bftb.grpc.Bftb.CheckAccountResponse;
 import pt.tecnico.bftb.grpc.Bftb.OpenAccountResponse;
 import pt.tecnico.bftb.library.DetectedReplayAttackException;

@@ -11,15 +11,19 @@ public interface Label {
     String INVALID_AMOUNT = "You can only transfer positive quantities.";
     String NO_PENDING_TRANSACTIONS = "Account doesn't have any incoming pending transactions.";
     String INVALID_ARGS_SEND_AMOUNT = "Source and destination key must be different.";
+    String ERROR_TRANSACTION_TIMEOUT = "Database timeout expired for transaction.";
+    String ERROR_TRANSACTION = "An unexpected error occurred in the database.";
     String INVALID_TRANSACTION_ID = "Transaction id is an integer greater or equal to 1. To see the pending incoming" +
             " transfers id's type \"check_account yourPublicKey\".";
     String SUCCESS_TRANSACTION = "Transaction occurred successfully.";
     String SUCCESS_TRANSACTION_REJECTED = "Transaction rejected successfully.";
     String NON_EXISTENT_TRANSACTION = "There is no transaction between given public key account and this account.";
     String NOT_ENOUGH_BALANCE = "Account has no sufficient funds to execute transaction.";
+    String SUCCESS = "SUCCESS";
     String NO_AUTHORIZATION = "This account has no authorization to accept or reject this transaction.";
     String ERROR_DECRYPT = "Either the message was tempered, duplicated or the public key given is invalid";
     String REPLAY_ATTACK = "Nonce verification failed. Message received does not hold property freshness.";
     String WTS = "The WTS sent is smaller than the WTS that the server has. Your operation was not executed.";
-
+    String INVALID_SOLUTION = "The solution for the hash puzzle sent by the client does not meet " +
+            "the requirements.";
 }
